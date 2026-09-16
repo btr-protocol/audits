@@ -2,69 +2,106 @@
 
 # The BTR security framework
 
-**Methodology v1.0 — 2026-09-16.** The operating manual for the BTR audit campaign, and the
-backbone of the published report.
+**Methodology v1.1. 2026-09-17.** The operating manual for the BTR audit campaign, and the backbone
+of the published report. This document is public. The runs it governs are indexed privately in
+`RUNS.md`; the findings themselves are published under the disclosure policy in §15.
 
-The one-line premise, and the reason this document is longer than a checklist:
+The premise, and the reason this is longer than a checklist:
 
 > A protocol is exactly as secure as its least-secure reachable path. Coverage is therefore a
 > **minimum over paths**, never a mean over rounds. A campaign that has run ninety rounds and never
 > once looked at one hot function has a coverage of zero on that function, and the round count is
 > not evidence about it.
 
-Everything below exists to make that minimum measurable, and to make a *clean* result mean
-something other than "we stopped".
+Everything below exists to make that minimum measurable, and to make a *clean* result mean something
+other than "we stopped".
 
 ---
 
-## 0.1 What the free packs give away, and what audit firms charge for
+## 0. Purpose, audience, threat model
+
+### 0.1 Purpose and audience
+
+Three readers, three demands.
+
+| reader | wants | what this document owes them |
+|---|---|---|
+| a depositor or LP | "can I lose my money" | §13 residual risk, §14 limits, §15 disclosure |
+| a professional security reviewer | "is this method sound, or theatre" | §2 to §12, §16 anti-gaming, §17 publication obligations |
+| the next campaign, on a different protocol | "how do I run this" | the whole document, plus the toolkit files in §19 |
+
+The framework is agentic: the readers are language models, orchestrated in cohorts, arbitrated by a
+named human. It is written to be judged by the same standards as a firm engagement, because that is
+the comparison a reader will make whether or not the document invites it.
+
+### 0.2 Threat model
+
+The audited system is an oracle-priced multi-asset AMM (the AIMM), its keeper fleet, its governance
+and ceremony surface, its SDK and its off-chain services. Coverage of a leg is a designed state
+variable, not an invariant, so the classical `x*y=k` safety argument does not exist here and cannot
+be borrowed.
+
+**Assets under protection**, in the order the framework prices them: LP principal and pool reserves;
+protocol solvency (the aggregate claim of every cohort against what the pools hold); protocol liveness
+and above all the ability to exit; the mark every price derives from; protocol fees and treasury; and
+integrator and operator correctness, meaning quotes, routes, published ABIs and deploy ceremonies.
+
+**Adversaries assumed, with their capabilities:**
+
+| adversary | capability assumed | not assumed |
+|---|---|---|
+| arbitrageur | unlimited capital via flash loans, block-level ordering through a builder, full knowledge of the pricing law and of every pending push | breaking signatures or cryptography |
+| hostile LP | deposits, withdrawals, cross-withdrawals and liability swaps in any order, inside one transaction, at any coverage state | minting claims it did not pay for, absent a defect |
+| hostile integrator or hook | arbitrary code in every callback the protocol offers, and reverting on an outcome it dislikes | being installed without governance |
+| malicious or degenerate token | every behaviour in the weird-ERC20 corpus: fee-on-transfer, rebasing, reentrant hooks, missing return, blocklists | being listed without governance |
+| compromised keeper or relay key | pushing any mark the on-chain gates accept, at any time, and withholding pushes | forging a quorum it does not hold |
+| compromised or mistaken privileged seat | every write its role permits, at the worst moment, including through a fence | exceeding its role's on-chain reach |
+| sequencer or builder | reordering, censoring and timestamp latitude inside protocol bounds | rewriting finalised state |
+
+**Explicitly out of the threat model**, and therefore out of the campaign: key custody and the
+physical or organisational security around it, social engineering, live-incident response, and the
+correctness of a third-party chain, sequencer or bridge beyond how the protocol depends on it. These
+are stated as non-goals in §17 obligation 12, not passed over in silence.
+
+**The load-bearing asymmetry.** Key compromise is 12.1% of incidents but 41.4% of all dollars lost
+(DeFiLlama, `method/landscape.md`, Registry, *Empirical datasets*). The prerequisite cap in
+§7.2 lowers a finding that needs a compromised key, which is correct and which alone would bury the
+largest real loss class. That is why blast radius is published as its own axis and never collapsed
+into severity.
+
+### 0.3 What the free packs give away, and what audit firms charge for
 
 By 2026 the *knowledge* layer of a smart-contract audit is free and commoditised: a dozen public
 skill packs ship the same checklists, patterns and attack vectors, and anyone can install all of it
-this afternoon for nothing. **The overlap is measured, not asserted** — the 2026-09-09 sweep read
-every source against the existing toolkit and reported only the residue. The source count, the
-per-source duplication figures and the verdicts are stated once, in
-`method/landscape.md` (**Headline**), and cited from here, never restated.
+in an afternoon for nothing. **The overlap is measured, not asserted.** The 2026-09-09 sweep read
+every source against the existing toolkit and reported only the residue: 197 sources registered, 92
+read as pinned source, measured duplication 88% to 90%. The per-source figures and verdicts are
+stated once, in `method/landscape.md` (**Headline**), and cited from here, never
+restated.
 
 What none of them sell is what an audit firm's invoice is actually for. Spearbit does not charge for
-knowing what reentrancy is; it charges for **several specialists reading the same frozen commit with
-different brains, arguing about it, and someone senior arbitrating**. Strip the knowledge out of an
-audit and three mechanisms remain.
+knowing what reentrancy is. It charges for several specialists reading the same frozen commit with
+different brains, arguing about it, and someone senior arbitrating. Strip the knowledge layer out and
+three mechanisms remain.
 
-Of the three, **M1 is absent from every pack reviewed.** M2 exists in at least one orchestration
-pack as per-pass provider rotation, and M3 in several as dismissal-with-challenge or
-attacker/judge separation. The distinction claimed here is therefore **budget versus feature**: a
-pack rotates providers when asked and judges the findings it happens to produce; neither is
-accountable to a per-line floor, and none can answer "how many independent readers formed an opinion
-about this line, and was that enough for what this line can cost". The claim is the accountability,
-not the invention.
+| # | mechanism | what it is, and where it lives here |
+|---|---|---|
+| **M1** | **complexity-weighted re-reads**: the second, third and fourth opinion | Not "did a tool scan this line" but *how many independent readers formed an opinion about it*, weighted by what the line can cost. Every public pack runs N agents **once** across the whole scope: breadth, then done. None encode a re-read budget per line. This one does (§3), and reported coverage is the **minimum** over paths, naming the path that sets it. |
+| **M2** | **model diversity** | The free packs are single-family by construction: a prompt bundle inherits whatever the host model cannot see. This framework rotates families and treats a between-family disagreement as the most informative event the campaign produces (§5). |
+| **M3** | **mandatory adversarial debate** | Public packs converge: agents find, an orchestrator dedups, a judge scores. Nobody in that pipeline is paid to *destroy* a finding, so its failure mode is a confident false positive and, worse, a confident false negative nobody challenges. Every finding here meets refuters that default to `refuted` (§6.7). Debate is also the only device that keeps re-reads honest: without it, opinions 2, 3 and 4 ratify opinion 1. |
 
-**M1 — Complexity-weighted re-reads (the 2nd, 3rd, 4th opinion).** Not "did a tool scan this line",
-but *how many independent readers formed an opinion about it*, weighted by what the line can cost.
-Every public pack runs N agents **once** across the whole scope: breadth, then done. None encode a
-re-read budget per line. This framework does (§3.1; the budget itself is `method/SKILL.md §2`), and
-the campaign's reported coverage is the **minimum** over paths, naming the path that sets it.
-
-**M2 — Model diversity.** The free packs are single-family by construction: a prompt bundle inherits
-whatever the host model cannot see. This framework rotates families and treats a between-family
-disagreement as the most informative event the campaign produces. Argument and rules: §5.
-
-**M3 — Mandatory adversarial debate.** Public packs converge: agents find, an orchestrator dedups, a
-judge scores. That pipeline has no one whose job is to *destroy* a finding, so its failure mode is a
-confident false positive and, worse, a confident false negative that no one is paid to challenge.
-Every finding here meets refuters that default to `refuted`, and a claim that survives no refuter is
-never filed (gate: `method/SKILL.md §4`; refuter budget: `SKILL.md §0`; standing orders:
-`method/lenses.md` LN-30). Debate is also the only device that keeps *re-reads* honest:
-without it, opinions 2, 3 and 4 tend to ratify opinion 1.
+Of the three, **M1 is absent from every pack reviewed.** M2 exists in at least one orchestration pack
+as per-pass provider rotation, and M3 in several as dismissal-with-challenge or attacker and judge
+separation. The distinction claimed here is therefore **budget versus feature**: a pack rotates
+providers when asked and judges the findings it happens to produce; neither is accountable to a
+per-line floor, and none can answer "how many independent readers formed an opinion about this line,
+and was that enough for what this line can cost". The claim is the accountability, not the invention.
 
 Three secondary mechanisms come with the same invoice and are also absent from the free packs, so
-they are specified here too: **scope and commit freeze** across all nine repos (§7.1, §7.7), **the
-fix is a new audit** — differential re-review plus a variant sweep of the whole bug family before
-any fix ships (§7.9) — and **a residual-risk statement instead of a verdict** (§8).
-
-Everything the packs *do* sell — the checklists, the patterns, the vectors — is ingested, deduped
-and kept once, with provenance, in `method/landscape.md`. That layer is table stakes.
-The three multipliers are the product.
+they are specified here too: **scope and commit freeze** with a mechanical ancestry assertion (§6.1,
+§11), **the fix is a new audit** (§9.3), and **a residual-risk statement instead of a verdict** (§13).
+Everything the packs *do* sell is ingested, deduped and kept once with provenance in
+`method/landscape.md`. That layer is table stakes. The three multipliers are the product.
 
 ---
 
@@ -72,29 +109,35 @@ The three multipliers are the product.
 
 | term | definition |
 |---|---|
-| **campaign** | the whole effort against one product, across surfaces and time. Current figures are generated, never typed: see §11. |
+| **campaign** | the whole effort against one product, across surfaces and time. Figures are generated, never typed: §18. |
 | **surface** | a body of code and its state, audited as a unit. New code is a **new surface** and inherits none of the campaign's convergence. |
-| **round** | one bounded execution: N finders, then refuters, then a merge into the ledger. Atomic unit of record. |
-| **cohort** | one finder team inside a round: a lens (or lens pair), a scope regime, a priming state, and a model family. Recent rounds have run 6 cohorts each. |
-| **lens** | a standing adversarial role with its own standing orders (`method/lenses.md`, `LN-10..LN-32`). Lenses are allocated by **shared mutable state**, never by file. |
+| **round** | one bounded execution: N finders, then refuters, then a merge into the ledger. The atomic unit of record, indexed in `RUNS.md`. |
+| **cohort** | one finder team inside a round: a lens or lens pair, a scope regime, a priming state, a model family. Recent rounds ran 6 cohorts each. |
+| **lens** | a standing adversarial role with its own standing orders (§6.4). Lenses are allocated by **shared mutable state**, never by file. |
 | **finder** | an agent whose job is to produce candidate findings under one lens. |
 | **refuter** | an agent whose job is to destroy a candidate. Defaults to `refuted`; the disagreeing party carries the burden. |
-| **chair** | the orchestrator of a round: consolidates cohort output, applies the dedup key, routes splits to a third reviewer, and writes the record. Never a finder in the round it chairs. |
+| **chair** | the orchestrator of a round: consolidates cohort output, applies the dedup key, routes splits to a third reviewer, writes the record. Never a finder in the round it chairs. |
 | **lead engineer** | the named human arbiter with the final call, distinct from every finding and refuting reviewer. Overturn standard: "clearly wrong", not "I disagree". |
-| **eye** | one *independent* pass over a target that logs `path:line` in `EYES.md`. Same model + same prompt + same session is one eye, not two. |
+| **eye** | one *independent* pass over a target that logs `path:line`. Same model plus same prompt plus same session is one eye, not two. |
 | **finding** | a ledger row with a stable id, a severity, a `path:line`, and a named material harm. |
-| **lead** | a candidate that has not yet met the promotion gate. Leads are recorded, never silently dropped. |
-| **design advisory** | intentional behaviour whose consequence is non-obvious or unbounded. First-class output class; never downgraded into silence. |
+| **lead** | a candidate that has not met the promotion gate. Leads are recorded, never silently dropped. |
+| **design advisory** | intentional behaviour whose consequence is non-obvious or unbounded. A first-class output class, never downgraded into silence. |
+| **bundle** | a set of rows closed by one coherent remediation, cited by the commits that closed it. |
+| **transvalidation** | an independent re-derivation of a known mechanism, with its own numbers. Confirms the ledger; does not reset a streak. |
 | **clean round** | a round that filed zero rows **at any severity**, with every cohort's target set enumerated and marked done or `N/A <reason>`. |
 
 ### 1.1 Class: AUDIT versus QA
 
 Every row carries a class, and the two are not graded on the same scale.
 
-- **AUDIT** — protocol, contract, oracle, keeper and SDK surfaces that hold or move funds, plus
-  ceremony and governance. These are the launch surfaces the stop rule reads.
-- **QA** — pre-release engineering defects in the off-chain services and the UI, never deployed to
+- **AUDIT.** Protocol, contract, oracle, keeper and SDK surfaces that hold or move funds, plus
+  ceremony and governance. These are the launch surfaces the stop rule reads and the coverage floor
+  counts.
+- **QA.** Pre-release engineering defects in off-chain services and the UI, never deployed to
   mainnet. Recorded and fixed, but they do not gate a launch and do not enter the coverage floor.
+
+The class is decided by *what the defect can reach*, not by which repository it lives in. A UI defect
+that debits the wrong amount from a user's wallet is AUDIT; a Rust service that logs badly is QA.
 
 ---
 
@@ -105,88 +148,104 @@ orthogonal axes, and a campaign that varies only one of them is buying repetitio
 
 | axis | values | what varying it buys |
 |---|---|---|
-| **A1 lens** | the roster in `method/SKILL.md §3` | different *questions*. The dominant axis: two lenses on one file beat two models on one lens. |
-| **A2 scope regime** | **free** (agent chooses its target) · **scoped** (assigned coupled-state group) | free measures *discovery*, scoped measures *coverage*. Neither alone is sufficient — see §4. |
-| **A3 priming** | **blind** · **primed** (full workbook) | blind measures whether a finding is *rediscoverable*; primed measures depth on known ground. Blind is the only defence against a ledger that teaches agents what to conclude. |
-| **A4 model family** | the roster in §5.3 | different pretraining ⇒ **different false-negative sets**. The only axis that attacks blind spots shared by every prompt we can write. |
+| **A1 lens** | the roster in §6.4 | different *questions*. The dominant axis: two lenses on one file beat two models on one lens. |
+| **A2 scope regime** | **free** (agent chooses its target) or **scoped** (assigned coupled-state group) | free measures *discovery*, scoped measures *coverage*. Neither alone suffices: §4. |
+| **A3 priming** | **blind** or **primed** (full workbook) | blind measures whether a finding is *rediscoverable*; primed measures depth on known ground. Blind is the only defence against a ledger that teaches agents what to conclude. |
+| **A4 model family** | the roster in §5.3 | different pretraining implies **different false-negative sets**. The only axis that attacks blind spots shared by every prompt anyone can write. |
 
 **Blind means blind.** Finders on a fresh-scope round are given the code and the method, and are not
-given the ledger, the TODO, the spec or any prior round. That is the operative content of A3 and it
+given the ledger, the TODO, the spec or any prior round. That is the operative content of A3, and it
 is enforced at dispatch, not requested of the agent.
 
-**Rule I1.** A round must vary at least two axes across its cohorts. Six cohorts differing only in
-lens is a good round; six cohorts differing only in model is a weak one.
-
-**Rule I2 (carry the path, withhold the verdict).** Stated as a binding rule in
-`method/SKILL.md §0`. It belongs here because it is the cheapest anti-correlation device available,
-and it applies across all four axes, not only to re-passes.
+| rule | statement |
+|---|---|
+| **I1** | A round must vary at least two axes across its cohorts. Six cohorts differing only in lens is a good round; six cohorts differing only in model is a weak one. |
+| **I2** | **Carry the path, withhold the verdict.** A re-pass agent is told what the previous round *explored* ("traced the toll through `_covToll`; never opened the sigma path") and never what it *concluded*: a verdict in the prompt is re-confirmed, not re-tested. The brief is adversarial in both directions, asking of an upheld finding what adjacent bug that analysis hides, and of a refuted one what enabler would make it live. The cheapest anti-correlation device available, and it applies across all four axes. |
+| **I3** | Re-passes are delta-only: round N+1 re-reads only sites with findings in round N, files no lens has ever logged, and every fix diff. A clean file is not re-read by a delta round, which is exactly why the coverage floor of §3 is a separate and blocking control. |
 
 ---
 
 ## 3. The coverage floor
 
-The stop rule in §6 is about *findings*. This section is about *looking*, which is what the premise
-actually cares about. Findings-based stopping is defeatable by not looking; coverage-based stopping
-is not.
+The stop rule in §10 is about *findings*. This section is about *looking*, which is what the premise
+cares about. Findings-based stopping is defeatable by not looking. Coverage-based stopping is not.
 
-### 3.1 The object
+### 3.1 Scoring an entry point
 
-**The operational table lives in `method/SKILL.md §2`** — the entry-point scoring, score ⇒ required
-eyes, the required lens per tier, and the fixed BTR hot-path list. It is stated there once and is not
-reproduced here. This section states only why it is shaped that way, and the rules that bind a
-campaign to it.
+Every external entry point is enumerated once in `00-scope/ENTRYPOINTS.md` and scored, one point each:
+
+| +1 if | rationale |
+|---|---|
+| it moves value | the loss is direct |
+| it makes an external call or accepts a callback | the frame is shared with an adversary |
+| it reads an oracle or runs custom math | the failure is silent and priced |
+| it is privileged or upgradeable | the blast radius is the fleet |
+| it replaces a classical invariant | no prior art protects it: swap, withdraw, flash, liability swap, haircut, toll |
+
+### 3.2 The budget
+
+An **eye** is an independent lens pass that logs `file:line`. Static analysis is not an eye: it is a
+precondition, and the lens that triages its output is what counts.
+
+| score | eyes | required lenses |
+|---|---|---|
+| 1-2 | **4** | accountant, attacker, verifier-hunter, refuter |
+| 3 | **6** | the four above, plus oracle-skeptic or governor (whichever owns the state), plus gap-hunter |
+| 4-5 | **8** | the six above, plus economist, plus a second refuter |
+
+**Floor: 4 eyes per line in scope, 8 per hot path.** The hot-path list is fixed so the tier is not
+re-argued each round: `swap` and `batchSwap`, deposit and mint, withdraw, cross-withdraw and
+liability swap, haircut, coverage toll, spread and skew, spline traversal, oracle push, rebias and
+widen, `PoolIOLib.exec`, flash, and every risk-parameter write on `Admin`.
 
 **Why a floor rather than a mean.** A "trivial" function is a classification made by one reader, and
-the premise above is that the campaign is bounded by the line nobody looked at hard — so the low tier
-carries a floor of four eyes, not the two the public packs set, and the misclassification cost is
-paid up front.
+the premise is that the campaign is bounded by the line nobody looked at hard. So the low tier carries
+a floor of four eyes, not the two the public packs set, and the misclassification cost is paid up
+front.
 
-**Rule C1.** The campaign's coverage is `min over entry points of (eyes spent / eyes required)`.
-Report that minimum and *name the entry point that sets it*. A campaign never reports a mean.
+The first-principles lens runs once per campaign and counts toward no tier. The differential and
+variant lenses are triggered by a fix or an upheld finding, not by score.
 
-**Rule C2.** A hot path (score ≥ 4) below its eye budget blocks the stop rule outright, regardless of
-how many consecutive clean rounds have run. Findings-convergence on the covered part of a system says
-nothing about the uncovered part.
+### 3.3 The rules that bind a campaign to the floor
 
-**Rule C3.** The eye budget is per **(entry point × lens)** cell, and cells are also tracked per
-**model family** for score-5 paths. A score-5 path signed off by one model family alone is recorded
-as `single-family` in the residual-risk statement (§8) — not as covered.
+| rule | statement |
+|---|---|
+| **C1** | Campaign coverage is `min over entry points of (eyes spent / eyes required)`. Report that minimum and *name the entry point that sets it*. A campaign never reports a mean. |
+| **C2** | A hot path (score 4 or 5) below its eye budget blocks the stop rule outright, regardless of how many consecutive clean rounds have run. Findings-convergence on the covered part of a system says nothing about the uncovered part. |
+| **C3** | The budget is per **(entry point x lens)** cell, and cells are tracked per **model family** for score-5 paths. A score-5 path signed off by one model family alone is recorded as `single-family` in the residual-risk statement (§13), not as covered. |
+| **C4** | Enumerate before analysing. An unmarked entry in a cohort's target set is an unfinished pass, never a clean one, and a clean round requires every cohort's set fully marked. |
 
-### 3.2 The evidence
+### 3.4 The evidence
 
 `EYES.md` is the coverage record: one row per pass, with the `path:line` ranges it actually cited. A
-pass that cites nothing did not happen. `scripts/check-workbook.py` asserts that the open rows shown
-are exactly the open rows in the full ledger and that every bundle cites its closing commits; the
-equivalent assertion for coverage is:
+pass that cites nothing did not happen. The mechanical assertion is:
 
-> every entry point in `00-scope/ENTRYPOINTS.md` has ≥ its required eyes in `EYES.md`, or is listed
-> by name in the residual-risk statement with the deficit.
+> every entry point in `00-scope/ENTRYPOINTS.md` has at least its required eyes in `EYES.md`, or is
+> listed by name in the residual-risk statement with the deficit.
 
-**Rule C4.** Enumerate before analysing (`method/SKILL.md §0`): an unmarked entry in a cohort's
-target set is an unfinished pass, never a clean one, and a `clean round` (§1) requires every cohort's
-set fully marked.
+Coverage evidence is positive and negative. Per entry point the record carries which lenses logged
+lines, which returned `N/A` with a reason, and which were **never reached**. Controls that passed are
+recorded beside controls that failed; a report showing only failures is a report that cannot be
+audited for omission.
 
 ---
 
 ## 4. Scope regimes, and why both are mandatory
 
-**Scoped** cohorts are assigned a coupled-state group. They are how the coverage floor is filled.
-Their weakness is that they can only find what the scoping author thought to scope; a scoped campaign
-inherits the blind spots of its own scope list.
+**Scoped** cohorts are assigned a coupled-state group. They fill the coverage floor. Their weakness is
+that they find only what the scoping author thought to scope: a scoped campaign inherits the blind
+spots of its own scope list.
 
 **Free** cohorts choose their own target ("find the sharpest thing in this system"). They are how the
 scope list itself gets audited. Their weakness is drift: they gravitate to the interesting and
 re-derive the same known mechanisms, which is why long free streaks mean less than they look.
 
-**Rule S1.** A model family is not retired (§6.3) until it has run **both** regimes clean. A free
-streak with no scoped passes measures attention, not quiet.
-
-**Rule S2.** Every free cohort declares its chosen target *before* it reports, and that target is
-logged in `EYES.md` like any other. Free scope is not unlogged scope.
-
-**Rule S3.** When a free cohort keeps landing on ground the ledger already owns, that is a signal
-about the *ledger's visibility*, not about the code: re-run it blind (A3) before concluding the
-system is quiet.
+| rule | statement |
+|---|---|
+| **S1** | A model family is not retired (§10.3) until it has run **both** regimes clean. A free streak with no scoped passes measures attention, not quiet. |
+| **S2** | Every free cohort declares its chosen target *before* it reports, and that target is logged like any other. Free scope is not unlogged scope. |
+| **S3** | When a free cohort keeps landing on ground the ledger already owns, that is a signal about the *ledger's visibility*, not about the code: re-run it blind before concluding the system is quiet. |
+| **S4** | Point free cohorts at the periphery. Measured: 67.6% of exploit paths at audited victims lay outside the audit scope (ack3 H1-2026, `landscape.md`). For this protocol the pricing kernel has the most eyes in the campaign and is the wrong target; the keeper fleet, the oracle wire, the off-chain services, the SDK and the deploy scripts are the right one. |
 
 ---
 
@@ -194,161 +253,384 @@ system is quiet.
 
 ### 5.1 Why
 
-Prompt engineering removes the blind spots that can be *named*. Model diversity is the only
-instrument that attacks the ones that cannot be: a class of bug that a given pretraining distribution
-does not represent well is invisible to every prompt written for that model, at any temperature, in
-any number of rounds. Independent-auditor practice rests on the same claim with humans — several
-people, same code, more than once — and the empirical backing is contest data, where a large fraction
-of valid findings are submitted by exactly one participant.
+Prompt engineering removes the blind spots that can be *named*. Model diversity is the only instrument
+that attacks the ones that cannot be: a class of bug that a given pretraining distribution does not
+represent well is invisible to every prompt written for that model, at any temperature, in any number
+of rounds. Independent-auditor practice rests on the same claim with humans, several people on the
+same code more than once, and the empirical backing is contest data: 33.5% of Highs and 42.3% of
+Mediums across 394 Code4rena contests were found by exactly one of a median 39 wardens.
 
-Model diversity is the **weakest** of the four axes per unit cost (A4 buys less than A1) and the
-**only** one that covers the unnamed. Both are true; spend accordingly — vary lens first, then regime
-and priming, then family.
+Model diversity is the **weakest** of the four axes per unit cost and the **only** one that covers the
+unnamed. Both are true. Spend accordingly: vary lens first, then regime and priming, then family.
 
 ### 5.2 The standing record requirement
 
-**Rule M1.** Every row in `EYES.md` and every finding record carries: `model_family`,
-`model_version`, `date`, `lens`, `scope_regime` ∈ {free, scoped}, `priming` ∈ {blind, primed},
-`target_set_hash`. A pass without provenance is not counted toward any stop rule. The per-family
-exhaustion qualifier (§6.3) counts from the first round that carries provenance.
+**Rule M1.** Every coverage row and every finding record carries `model_family`, `model_version`,
+`date`, `lens`, `scope_regime` in {free, scoped}, `priming` in {blind, primed}, and `target_set_hash`.
+A pass without provenance counts toward no stop rule. Per-family exhaustion (§10.3) counts from the
+first round that carries provenance.
 
 ### 5.3 The roster
 
-The models used across the campaign, unordered: **ChatGPT Astra, Claude Opus 5, Claude Fable 5.1,
-Muse Spark 1.3, GLM 5 and GLM 5.3, DeepSeek 4.1 Flash, DeepSeek 4 Pro.** They were used across
-finding, adversarial review, debate, cross-validation, and test and fuzz generation. The roster is a
-living list; a family that ships a major version is a *new* family for stop-rule purposes, because
-its false-negative set moved.
+The models used across the campaign, unordered:
 
-**Rule M2.** Round composition draws cohorts from at least two families whenever more than one is
-available, and the two must not both be scoped-primed — pair a scoped cohort in family X with a
-free-blind cohort in family Y, so A2/A3/A4 vary together.
+**ChatGPT Astra . Claude Opus 5 . Claude Fable 5.1 . Muse Spark 1.3 . GLM 5 . GLM 5.3 .
+DeepSeek 4.1 Flash . DeepSeek 4 Pro.**
 
-**Rule M3.** A finding confirmed by two families is `cross-family confirmed` and skips one refuter
-tier. A finding found by one family and *refuted* by another is escalated to debate, not dropped: a
-disagreement between families is the most informative event the campaign produces, and it goes in the
-dissent register (§7.6) whichever way it settles.
+They were used across finding, adversarial review, debate, cross-validation, and test and fuzz
+generation. The roster is a living list. A family that ships a major version is a *new* family for
+stop-rule purposes, because its false-negative set moved.
 
----
+**No finding is attributed to a model, ever.** Per-finding attribution invites the reader to grade the
+finding by its author instead of by its evidence, and it invites the campaign to shop for a flattering
+roster. Provenance is recorded per *pass*, aggregated per *family*, and published as rates (§17
+obligations 6 and 10). A finding stands on its citation.
 
-## 6. The stop rule
+### 5.4 Cross-validation rules
 
-**Two consecutive clean full rounds on the launch surfaces**, where a clean round (§1) files zero
-rows at any severity with every cohort's target set enumerated and marked. That is the rule. It
-proves that the audited baseline is quiet under the lens roster and model cohort declared, at the
-pinned commit. Three qualifiers bind it, and the coverage floor (§3) must be satisfied independently.
+| rule | statement |
+|---|---|
+| **M2** | Round composition draws cohorts from at least two families whenever more than one is available, and the two must not both be scoped-primed. Pair a scoped cohort in family X with a free-blind cohort in family Y, so A2, A3 and A4 vary together. |
+| **M3** | A finding confirmed by two families is `cross-family confirmed` and skips one refuter tier. A finding found by one family and *refuted* by another is escalated to debate (§6.8), never dropped. |
+| **M4** | Cross-family agreement is **evidence, never a second row**. A cohort that counts agreement as corroborating rows inflates its own output, and that is the first thing a hostile reader checks. |
 
-### 6.1 Coverage qualifier
-A hot path below its eye budget blocks the rule outright (Rule C2). Findings-convergence is not a
-substitute for having looked.
-
-### 6.2 Surface reset
-**Any new or materially changed surface resets the count for every path it touches**, and enters the
-coverage floor with zero eyes. Justification, from this campaign: the only new CRITICAL — A-213,
-pool-provenance ambiguity in factory initialisation, where the `poolAdmin == 0` sentinel combined
-with an attacker-supplied treasury — was found by the *first* adversarial pass on a surface that did
-not exist when the campaign began, while the baseline was mid-streak with zero MEDIUM-or-above. Both
-facts were true simultaneously. A stop rule that cannot express that is a stop rule that ships the
-CRITICAL.
-
-### 6.3 Per-family exhaustion
-A model family is retired from the rotation **for a surface** after six consecutive rounds — spanning
-both scope regimes (§4) and at least one blind round — in which that family filed zero *new* rows.
-
-- *New* means new after dedup (§7.5). Re-deriving a known mechanism with a better number is a
-  **transvalidation**: a valuable output and an explicit non-reset. It is evidence the ledger is
-  right, not evidence the family is still finding things.
-- Retirement is **per surface**. §6.2 un-retires every family on a changed surface.
-- Retirement is **reversible on evidence**: if another family later files a row on that surface, the
-  retired family is recalled for one round scoped to the same coupled-state group. A miss on a row a
-  second family found is recorded as a *family blind spot* — the most valuable calibration datum the
-  framework produces.
-- Six is a budget, not a proof. See §8.
-
-### 6.4 What it does not prove
-No form of this rule proves absence of bugs. It bounds *effort under a stated method*: it is a
-budget-exhaustion criterion with a falsifiability condition attached, and it must be published in
-those words. It proves nothing about parts of the tree a delta-only round did not re-read. The honest
-output of the framework is §8, not a pass/fail.
+**M5, what the literature permits us to claim.** Same-model resampling raises accuracy but is not
+diversity. Model judges agree with human preference above 80%, yet their self-consistency measured by
+Krippendorff's alpha runs as low as 0.27 and their framing bias reaches +31.6 points (Appendix A.1).
+**A judge that disagrees with itself cannot arbitrate.** That is the empirical reason a human holds
+the final call, and the reason arbitration is a named role rather than another model.
 
 ---
 
-## 7. The pipeline: scope freeze → published report
+## 6. The round
 
-Deterministic wherever it can be. Agents produce structured JSON; orchestrators and humans never
+Deterministic wherever it can be. Agents produce structured output; orchestrators and humans never
 hand-edit the record.
 
-### 7.1 Freeze the scope
-`00-scope/FREEZE.md` pins one head per repo across all nine repos, with clean working trees at
-freeze. `scripts/check-workbook.py` then asserts, mechanically, that **every `repo@sha` cited by the
-front door is an ancestor of its pinned head**, and that the open-row set shown matches the archive.
-A dirty tree is not a pinned commit, and a citation that does not descend from the freeze is a
-citation to code that was never audited. This assertion is the load-bearing control of the whole
-framework: it is what makes "we audited this commit" checkable rather than claimed.
+### 6.1 Freeze the scope, then assert the ancestry
 
-### 7.2 Brief the reviewers
-Every reviewer reads `00-scope/PRIMER.md` (the system, the repos, the id families, the unit scales)
-and `00-scope/ENTRYPOINTS.md` before any pass. Both are a neutral map: what exists and what it is
-called, with no verdicts, no severity hints and no prior conclusions. A primer that editorialises
-becomes priming, which is the failure Rule I2 exists to prevent.
+`00-scope/FREEZE.md` pins one head per repository across all nine repositories, with clean working
+trees at freeze. A dirty tree is not a pinned commit. `scripts/check-workbook.py` then asserts,
+mechanically, that **every `repo@sha` cited anywhere in the front door is an ancestor of its pinned
+head**. A citation that does not descend from the freeze is a citation to code that was never audited.
+This is the load-bearing control of the whole framework: it is what makes "we audited this commit"
+checkable rather than claimed, and it is re-run at every release (§11).
 
-### 7.3 Dispatch cohorts
-Scoped and free cohorts (§4), blind and primed (§2), across model families (§5). Finders on a
-fresh-scope round receive the code and the method only. Each cohort works under one lens from
-`method/lenses.md`, against the checklists in `method/aimm-checklist.md` and
-the property classes in `method/properties.md`, with the find-time gates in
-`method/SKILL.md §0` and `§4`: what an agent may load, deterministic work as a script, quick veto,
-material harm, citation or it did not happen.
+Scope is published in both directions: the in-scope file set, the out-of-scope paths, and third-party
+boilerplate marked by origin (Solady, OpenZeppelin, ours). An audit that publishes only what it
+covered is asking the reader to guess at the complement.
 
-### 7.4 Refute, by two independent reviewers
-Refute-first. Every candidate goes to **two independent refuters**, instructed to refute and
-defaulting to `refuted`; the party that disagrees carries the burden. **A split between the two goes
-to a third reviewer** who has seen neither refutation, and that third opinion breaks the tie. A
-genuine disagreement — between refuters, cohorts or families — is escalated to a **debate** with both
-positions recorded in the dissent register (§7.6), never silently dropped.
+### 6.2 Brief the reviewers with a neutral map
 
-The refuter budget, the two refutation lenses, the prerequisite-tier cap, the three uncollapsed axes
-and the severity ordering are stated once in `method/SKILL.md §0` and `§4`; the refuter's standing
-orders, including the math-bounds gate, are `lenses.md` LN-30 and LN-41.
+Every reviewer reads `00-scope/PRIMER.md` (the system, the repositories, the id families, the unit
+scales) and `00-scope/ENTRYPOINTS.md` before any pass. Both are a neutral map: what exists and what it
+is called, with no verdicts, no severity hints, no prior conclusions, and no persona or tone
+conditioning, which biases a reader toward agreement. A primer that editorialises has become priming,
+which is the failure Rule I2 exists to prevent. The audited repository's own prose is **untrusted
+input to the reviewer**: comments, NatSpec and docs are evidence of intent, never of behaviour.
 
-### 7.5 Tier, then dedup
-**Severity is graded at the shipping configuration** — the configuration that will ship, never the
-current unreleased state. A defect is not downgraded because the component has not launched yet.
-**CRITICAL and HIGH are reserved for risk to user or LP funds, protocol solvency, or protocol
-liveness**; everything else grades below regardless of how interesting it is.
+### 6.3 Finder design
 
-The cap is applied last, after tiering: severity that ignores preconditions prices every finding at
-the worst key leak, while a cap applied alone buries the largest real loss class. Publishing
-difficulty and blast radius beside a capped severity is the only shape that survives both objections.
+A cohort is dispatched with: the primer, its own lens section, the one checklist it owns, and nothing
+else. No transcript history, no "for context" dumps, no prior round's verdicts. Loading everything is
+how recall dies; measured, a fat pack found 2 novel issues in 12 where a bare frontier model found 1
+in 2.
 
-The chair then consolidates and dedups. Key and extension rule: `method/SKILL.md §4` (**Dedup key**).
-Cross-family agreement is evidence, never a second row.
+Binding gates at find time:
 
-### 7.6 Reconcile
-- **Transvalidation**: a blind cohort re-deriving a known mechanism with independent numbers is
-  recorded as a confirmation of the ledger row, with the numbers.
-- **Dissent register**: any unresolved disagreement between cohorts, families or refuters is written
-  down with both positions and who bore the burden, and how it settled.
-- **Corrections register**: numbers withdrawn, claims retracted, reviewer errors — kept in the report
+| gate | rule |
+|---|---|
+| **allocation** | one lens owns one coupled-state group. Never one agent per file, per page, per module. |
+| **enumerate first** | the lens lists its target set before analysing it, and marks each entry done or `N/A <reason>`. |
+| **determinism** | entry-point census, live-state snapshot, ledger merge, static-tool filtering and test baselines are scripts, not agents. |
+| **quick veto** | before any narrative: "what single check makes this impossible?" Then grep for it. |
+| **material harm** | who loses what, in one line. Harm stated only as a mechanism ("guard missing", "state diverges", "callable") is capped at INFO until a consequence is written, or is re-filed as a design advisory. |
+| **citation** | `path:line` from a real search, or it did not happen. |
+| **failed read** | an RPC 429, a build failure or a timeout is `FAILED`, never a value, and never an empty result. |
+| **promotion** | LEAD becomes FINDING only with a reproduced number, trace or test, or with two lenses converging on the same `(contract, function, mechanism)`. A symbolic or fuzz counterexample is a LEAD until replayed in forge. |
+| **budget** | at most 8 finders and 2 refuters per finding per round. A workflow that would exceed roughly 25 agents is wrong: split it by phase and read the results in between. |
+| **hygiene** | read-only on every tracked file, no git operations, no secrets printed, proof-of-concept code only in a gitignored scratch directory. |
+
+### 6.4 The lens roster, and the questions each one asks
+
+Lenses are standing adversarial roles. Full standing orders live in `method/lenses.md`
+under the ids below; the questions that define each remit are reproduced here because a methodology
+that names its lenses without stating their questions has told the reader nothing.
+
+**Shared foundation, built once by the accountant and reused by every lens:**
+
+| id | object | what it produces |
+|---|---|---|
+| LN-01 | **mutation matrix** | every storage field against every entry point, cell = the delta. An unknown cell is a lead, not a blank. |
+| LN-02 | **coupling hypotheses** | written *before* reading the code, one per field pair. Each becomes an invariant row. |
+| LN-03 | **parallel-path and guard-frequency table** | for every outcome reachable by more than one path, the guards on each path. Then, per state field, `Confidence(guard) = writers applying it / writers`. At 80% or more the guard is the convention and every exception is a finding to be refuted; 50% to 79% is a lead; below 50% there is no convention. |
+| LN-04 | **masking-code red flags** | ternary clamps, `min(computed, available)`, early zero returns, swallowed try/catch, default-zero fallbacks, saturating casts, a loop that returns its last iterate at its cap, and arithmetic on a never-written slot. Each is a lead until explained. |
+| LN-05 | **path dependence** | for every accumulator, toll, haircut and fee: the sum of N slices against one aggregate operation from the same state. Any difference beyond rounding is extractable. |
+| LN-06 | **mechanism-interaction pairs** | for each pair of configurable mechanisms, does enabling A change B's safety argument. |
+
+**Concept lenses** (these lead the round: the stated core risk is financial, not exploit):
+
+| id | lens | its standing questions |
+|---|---|---|
+| LN-10 | **economist** | Who bears a spoke's LVR, the hub or the spoke LPs? Is surplus above peg claimable? Can undercoverage persist without an exit? Is the coverage-parameter ladder worth at least one day of LVR at each archetype's volatility? How long is recovery after a gap? Are the shipped fee, vega, dispersion, band, TTL, max-deviation and sigma-floor values mainnet-safe, and why? Answers carry numbers from the live law and live state, never prose. |
+| LN-11 | **oracle-skeptic** | Per stated assumption: the cheapest violation, the blast radius in legs, what detects it, what stops it. Standing items: wedging past the deviation band, slot-clock masking, shared signer sets, sigma floors, inert confidence, keeper choice and delay as order-flow value, front-running a push at the frozen mark, one-update-per-block lock-in with an older valid blob, sequencer and timestamp semantics, and whether the relay key is the owner key. |
+| LN-12 | **governor** | Roles, timelock keys and tiers, steward fences and step clamps and cooldowns (walk the worst case for 24 hours), guardian direction and reach, proxy provenance against the deployments record, expired-operation semantics, and the routine matrix: overlap, gaps, dead routines, incentive per routine, idempotent on and off, every halt has a reverse, multi-step admin atomicity, and a healthcheck that diffs intended against chain. |
+| LN-13 | **first-principles** (once per campaign) | Ignore the rationale in the docs. Re-derive from the ledger code alone what each LP cohort is promised, judge the design for mixed-toxicity baskets, and propose the minimal redesign ranked by attack surface. **Second duty, invariant inference**: derive invariants *from* the code, in the opposite direction to every other lens, then diff against the documented set. Inferred but undocumented is either an unpublished axiom or an accident nobody defends; documented but not inferable is unenforced. Seed candidates from this system's own ledger, never from AMM priors: an engine carrying `k = x*y` manufactures violations out of an AIMM by design. |
+
+**Code lenses:**
+
+| id | lens | its standing questions |
+|---|---|---|
+| LN-20 | **accountant** | Builds LN-01 to LN-03. Then per entry point: the delta per field, the ledger identity after the call, the rounding direction at every `mulDiv` (pool-favoured on both legs), unit mixing across the fixed-point and decimal scales, casts and unchecked blocks, the dead-share carve-out, and the fee split. |
+| LN-21 | **attacker** | Traces, never assumes. Every external call and callback, the reentrancy guard first and everywhere, the flash mutex on every crediting path, transient-cache lifetime within one transaction, flash composed with swap and withdraw, sandwiching a push, just-in-time liquidity against the lock, zero-slippage integrators, batch ordering, and hostile tokens. Standing insight: **a callback is a free option, not only a reentrancy surface**. A callee that reads the outcome and reverts when it dislikes it retries until the mark moves its way; a reentrancy guard does not touch this, and cheap gas makes the retry nearly free. |
+| LN-07 | **call-frame axis** (owned by the attacker, once per external entry point) | Storage-shaped target sets leave the call frame unowned. Four questions. (a) For every array parameter: what does a duplicate entry do, do parallel arrays have a length check, is any cap counted before deduplication, is value consumed once per iteration, and what does forced partial execution under the 63/64 gas rule select? (b) Which requirements are *over*-strict, and who legitimately gets locked out? (c) What is returned, and does anyone validate it? (d) Every parameter validated at the trust boundary, as a list: two-sided range, zero, the zero address, self-reference, array length and parity, duplicates, and the unbounded twin of every bounded quantity. |
+| LN-22 | **verifier-hunter** | (a) Claimed intent against observed behaviour for every alignment item and every invariant with no proof. (b) Triage of every High and Medium static-tool hit: refute with the named compensating control, or confirm with `path:line`. Never ignore. (c) Devil's advocate on every "verified sound" claim in the baselines. Writes proofs of concept for the top five. |
+| LN-23 | **gap-hunter** | Owns the seams between other lenses, as three enumerable target sets, each producing a `file:line` list rather than prose. **Numerical gap**: the inferred-invariant set intersected with the branch-predicate list; per pair, does the invariant survive integer slippage at the boundary and at plus or minus one? **Trust gap**: collusion pairs crossed with free-choice windows; the guard is correct and the formula is correct, and the actor the guard permits extracts systematically through the formula. **Flow gap**: the value-crossing pairs made exhaustive (quote to settle, push to cache to quote, library to storage, hook to ledger, request to settlement), each checked with a storage-write symmetry diff. |
+
+**Triggered lenses** (not scored, run on an event):
+
+| id | lens | trigger and remit |
+|---|---|---|
+| LN-30 | **refuter** | Every finding. Two refutation lenses run separately: **correctness** (is the mechanical claim literally true, grepping every guard claimed absent and **recording the patterns tried**, because an absence rests entirely on the search that looked for it) and **economics and reachability** (walk the preconditions at live parameters; attacker cost against extraction; LP loss against the toll that prices it). |
+| LN-31 | **differential** | Every fix diff. Reads only the diff and its callers. Four deterministic failure rules checked before any judgement: a new externally reachable entry point; a new path from untrusted entry to a sensitive sink; an authorisation check removed from a reachable path; a privilege boundary newly reachable from untrusted input. On a deleted line, search the history for it first: a guard this fix removes may be one an earlier fix added. |
+| LN-32 | **variant** | Every upheld finding, before its fix ships. State the root cause in one sentence, then grep a pattern matching **only** the known instance and confirm it hits; a pattern that matches nothing means the bug was misread. Generalise one element at a time, read every match after each change, stop when over half are noise. Five axes: other call sites of the same library function; the structurally paired operation; the same boundary on other legs and lanes; **same caller** (the function that mis-prepared state before this sink prepares it the same way before its other sinks); **same entry-point path** (a flow is authored once, and its gaps come in sets). Where a root cause survives its fix, promote the grep to a static rule so the sweep is re-runnable. |
+
+### 6.5 Checklists and property lists
+
+Three toolkit files carry the enumerable material. They are cited, not restated, because a
+methodology that inlines its checklists becomes the spreadsheet it replaced.
+
+| file | what it owns |
+|---|---|
+| `method/aimm-checklist.md` | protocol-native items in six sections: ledger and pricing law, coverage and cohorts and contagion, oracle dependency, governance and operations, keeper and guardian and steward routines, and the constructs generic lists miss. |
+| `method/properties.md` | the property templates P-01 to P-31, the verified tool pipeline with its per-tool coverage tripwires, and the formal-methods status table. |
+| `method/routing.md` | signal to load: what a cohort reads given what its target *does*, with an explicit never-load list. |
+| `method/lenses.md` | the standing orders summarised in §6.4, in full. |
+| `method/landscape.md` | the input registry: every external source with its commit or fetch date, the measured duplication, and the rejected and unreachable lists. Reference only; never loaded by a cohort. |
+| `method/SKILL.md` | the round runner: token discipline, the loop, the eye budget, the gates. This document says why rounds are shaped as they are; that one runs a round. |
+
+### 6.6 Static analysis
+
+Static tools are a precondition, not an eye. The pipeline is cheap to expensive and every command is
+recorded with the coverage it actually achieved. **An exit code is not evidence that a tool ran**: one
+tool in this pipeline exits zero while reporting "compiled 0 files", which is a green light over zero
+analysis. Every tool row therefore carries a **minimum coverage assertion** separate from success:
+files compiled, contracts analysed, calls executed, mutants generated. A run below its tripwire is
+`FAILED`, never `clean`.
+
+Every High and Medium hit gets a one-line refutation naming the compensating control, or becomes a
+finding. Neither outcome is silence.
+
+### 6.7 Refute first, by two independent reviewers
+
+Every candidate goes to **two independent refuters**, instructed to refute, defaulting to `refuted`.
+The disagreeing party carries the burden with evidence. A `FALSE` verdict must name the compensating
+control: "no evidence" is not a refutation. Verdicts are `TRUE`, `FALSE`, `DOWNGRADE`, `UPGRADE`.
+
+Budget: two refuters for CRITICAL and HIGH candidates, one below. A candidate that survives no refuter
+is never filed. **A split between the two goes to a third reviewer** who has seen neither refutation
+and receives the candidate and the code, not the two arguments.
+
+Two refutation lenses run separately on every candidate:
+
+| lens | question |
+|---|---|
+| **correctness** | Is the mechanical claim literally true? Grep every guard claimed absent and **record the patterns tried**: an absence rests entirely on the search that looked for it. Write or run the proof of concept. |
+| **economics and reachability** | Walk the preconditions at live parameters. Attacker cost against extraction. LP loss against the toll or fee that prices it. |
+
+Four gates bind the verdict.
+
+| gate | rule |
+|---|---|
+| **math bounds** | Where the claim is arithmetic, the verdict needs the algebra both ways. `TRUE` requires a proof that the vulnerable input is *reachable* through every clamp, cast and validator on the path, and the proof produces the value. `FALSE` requires a proof that validation makes it *mathematically impossible*, not that a guard exists somewhere upstream. "There is no check" without the algebra is a lead. |
+| **temporal** | Only a *persistent* violation counts. An invariant broken mid-call and restored before that call returns is not a finding, with one exception that is the whole point of the rule: it **is** a finding if any external call, callback, hook or token transfer sits inside the broken window, because that window is somebody else's read and somebody else's free option. State the window's boundaries before filing. |
+| **archetype** | Checked before any verdict: hidden reconciliation in a modifier or hook; lazy evaluation; a clamp that is the intended law; admin-mistake-only; dormant behind a flag with a timelocked enable; magnitude below rounding or fee noise; already in the baselines. |
+| **brocard** | Cited by id, so a dismissal is itself auditable. No exploit from the heavens (required capabilities at least as available as the impact is large). No cure worse than the disease (weigh the remediation's own blast radius). Judge the technical description with the score, the label and any identifier stripped. |
+
+Two brocard positions are deliberate and load-bearing. **No vulnerability from standard behaviour,
+except where an implementation voluntarily adopts a stricter posture and then fails it**: the coverage
+parameters, the exit haircut, the reference band and the governance fences are all voluntary
+strictness here, so "no specification was violated" is never a refutation in this codebase. And
+**"documented behaviour, therefore dismiss" is not imported at all**: it is written for third-party
+libraries whose documentation is a published contract, whereas this protocol's documentation is its
+own, written after the code and known to lag it. Documenting a hazard does not price it.
+
+**Rationalisations rejected outright**: "looks vulnerable" (find the exact pattern), "probably a
+missing check" (verify it absent on *all* paths), "the admin is trusted" (check propagation and
+fences), "dormant today" (is it one config write away?), "the docs say so" (the code is the
+specification), "the static tools are clean" (economic and logic bugs pass every bounds check and
+every solver), "the sibling checked out" (each leg, lane, field, direction and actor stands on its own
+citation; a refutation of row N is never evidence for row M).
+
+**Verification record**, per finding: method (trace, proof of concept, or measurement), guards
+checked, proof-of-concept path with pass or fail and the key number, verdict. Runner semantics: an
+exit code maps to VERIFIED or DISPROVED; a timeout is ERROR, never DISPROVED; **could not build the
+harness is not the same as the proof failed, which is not the same as the finding is refuted.**
+
+### 6.8 Debate
+
+A genuine disagreement, between refuters, between cohorts, or between model families, is escalated to
+debate. It is never silently dropped and never settled by re-running the same prompt until it agrees.
+
+| step | rule |
+|---|---|
+| 1. positions | each side states its position in at most ten lines: the claim, the citation, the number. Prose without a citation is forfeit. |
+| 2. exchange | each side answers the other's *citation*, not its conclusion. At most two exchanges. |
+| 3. third reviewer | a reviewer who has seen neither position receives the candidate and the code. Its independent verdict enters as a third position, not as a tiebreak vote. |
+| 4. chair | the chair calls it on the evidence and records who bore the burden. |
+| 5. lead engineer | a chair-level deadlock goes to the named human, whose overturn standard is "clearly wrong", not "I disagree". |
+| 6. unresolved | a disagreement that survives step 5 ships as a **design advisory** plus a dissent register entry carrying both positions. It is never closed as refuted. |
+
+Every debate is recorded whichever way it settles. The **disagreement rate between model families on
+the same finding** is computed from these records and published (§17 obligation 10): it is the metric
+that carries or breaks the cohort argument, and it is computable from the record as kept.
+
+### 6.9 Chair consolidation and dedup
+
+The chair consolidates cohort output after refutation, and is never a finder in the round it chairs.
+
+**The dedup key is `(contract, function, state variables, invariant, fix shape)`.** Not similar prose.
+
+| situation | disposition |
+|---|---|
+| two candidates share the key | one row. The second is `DUPLICATE`, pointing at the first. |
+| two candidates share a **fix shape at one site** | one row, even if the narratives differ. |
+| a candidate *extends* an existing row with new information | filed as an **extension** on that row, carrying the new information. Never a new id. |
+| a candidate is a special case of a broader row already filed | `SUBSUMED` by the broader row. |
+| two rows are found in different rounds with the same root cause | merged, keeping the **earlier** id, with the later id recorded as `DUPLICATE`. Ids are stable and are never reused. |
+| two families report the same thing | one row, marked `cross-family confirmed`. Agreement is evidence, never a second row. |
+
+The industry's cause-shaped test is applied **alongside** the location-shaped key: same root cause, at
+least Medium impact, a valid attack path, with the operational check *does fixing the root cause
+eliminate it*. Where the two tests disagree, the merge is recorded with the reasoning.
+
+**Bundles.** A bundle forms when a set of rows is closed by one coherent remediation: one root cause,
+one contiguous fix, one review. A bundle is not a convenience grouping by file or by severity. Each
+bundle cites the commits that closed it, and every row in it names the bundle. The value of the bundle
+is the fix review: one differential pass over the whole remediation, not N passes over N rows.
+
+### 6.10 Reconcile, and the three registers
+
+- **Transvalidation register.** A blind cohort re-deriving a known mechanism with independent numbers
+  is recorded as a confirmation of the ledger row, with the numbers. It is a valuable output and an
+  explicit non-reset of any streak.
+- **Dissent register.** Any unresolved disagreement, with both positions, who bore the burden, and how
+  it settled.
+- **Corrections register.** Numbers withdrawn, claims retracted, reviewer errors. Kept in the report
   as a first-class section. A framework without a corrections section is asserting an accuracy it has
-  not measured.
+  not measured. This campaign's corrections include a cross-validation claim that was itself wrong.
 
-### 7.7 Consolidate
-The full ledger (`archive/2026-09-15/LEDGER-FULL.md`) is the source of truth. The front door —
-`LEDGER.md` (open rows), `BUNDLES.md` (fixed-findings register), `REPORT.md` — is derived from it and
-checked by `scripts/check-workbook.py`: the open set matches, the totals match, every archived bundle
-has a line, every closed line cites a `repo@sha`, and every cited sha is an ancestor of its freeze
-head (§7.1). Editing the prose without editing the ledger desynchronises them; the check is what
-makes "we did not drop a finding" checkable rather than claimed.
+---
 
-### 7.8 Turn findings into tests
+## 7. Severity doctrine
+
+### 7.1 The matrix
+
+Severity is **likelihood x impact, evaluated at the shipping configuration**. Impact is ordered as the
+threat model prices the assets. Likelihood is stated as the **hardest precondition** the attack needs:
+`L4` none, permissionless at shipping parameters; `L3` a specific market state, a victim's signature or
+approval, or a specific ordering; `L2` one privileged actor's mistake; `L1` a compromised trusted key.
+
+| impact | L4 none | L3 market or victim | L2 privileged mistake | L1 key compromise |
+|---|---|---|---|---|
+| **I5** LP principal or solvency: value lost or made unrecoverable | **CRITICAL** | **HIGH** | MEDIUM | LOW |
+| **I4** liveness: funds frozen, market unusable, exit blocked | **HIGH** | **HIGH** | MEDIUM | LOW |
+| **I3** revenue or treasury: value leaks to one actor, fees mis-split | **HIGH** | MEDIUM | LOW | LOW |
+| **I2** operator or integrator: bounded grief, wrong number surfaced, ceremony breakage | MEDIUM | LOW | LOW | INFO |
+| **I1** no material harm can be named | INFO | INFO | INFO | INFO |
+
+**CRITICAL and HIGH are reserved for risk to user or LP funds, protocol solvency, or protocol
+liveness.** Everything else grades below, regardless of how interesting it is.
+
+**The L1 re-tier.** A finding capped at LOW by key compromise is re-tiered upward when the authority
+propagates through an honest component, or when a fence that was supposed to bound it fails. A key
+that reaches further than its role does is a governance finding at the reach, not a LOW at the key.
+
+### 7.2 Ordering, and why the cap is applied last
+
+1. **Harm gate.** Is a material harm named? If not, the ceiling is INFO.
+2. **Composition floor.** Does the defect break a documented invariant? An invariant break alone is
+   HIGH only for invariants in the published set. An *inferred* break is a LEAD.
+3. **Impact and blast radius.** Place on the impact axis; record blast radius separately.
+4. **Likelihood.** Place on the likelihood axis.
+5. **Prerequisite cap, last.** The only step that *lowers* severity on grounds of unreachability.
+   Every earlier step assumes reachability.
+
+Severity that ignores preconditions prices every finding at the worst key leak. A cap applied alone
+buries the largest real loss class. Publishing difficulty and blast radius beside a capped severity is
+the only shape that survives both objections.
+
+### 7.3 The three axes, never collapsed
+
+| axis | values |
+|---|---|
+| **severity** | CRITICAL, HIGH, MEDIUM, LOW, INFO, capped as above |
+| **difficulty** | how hard the attack is to execute given its preconditions are met |
+| **blast radius** | leg, pool, fleet, treasury, LP principal |
+
+A LOW with fleet radius must not sort to the bottom of a report. `Undetermined` is a first-class
+severity verdict: a finding whose reachability could not be settled is published as undetermined, not
+quietly graded INFO.
+
+### 7.4 Severity at the shipping configuration
+
+**A defect dormant only because a component has not shipped keeps its armed-state severity**, with
+`live_today = false` recorded beside it. Dormant-today downgrades are banned. They under-tiered four
+rows in this campaign before the rule was written.
+
+The same rule reads in the other direction: the stop rule reads the *shipping* surface. A clean round
+against a system smaller than the one being launched is not a clean round.
+
+---
+
+## 8. Disposition vocabulary
+
+Every row reaches exactly one of these states, and the word is load-bearing. A reader must be able to
+tell "we fixed it" from "we decided not to".
+
+| disposition | definition |
+|---|---|
+| **OPEN** | upheld, not yet remediated. The default. A row with landed code and an outstanding operational residual stays OPEN and names the residual. |
+| **FIXED** | remediated in code, with the closing `repo@sha` cited, and the fix reviewed by the differential lens. A fix without a cited commit is not FIXED. |
+| **ACCEPTED** | upheld, understood, and deliberately not remediated. Requires a named accepting party and the reason. This is the only disposition that closes a real defect without a code change, and it is the one a hostile reader will read first. |
+| **CLOSED** | the row is discharged by something other than a code change in this repository: a runbook step, an operational control, a deployment decision. Names what discharges it. |
+| **REFUTED** | the claim is not true on the audited code. Requires the named compensating control or the algebra, per §6.7. |
+| **DUPLICATE** | the same finding as an earlier id under the dedup key. Points at the surviving id. |
+| **SUBSUMED** | a special case of a broader row. Points at the broader id. |
+| **MOOT** | the code the row described no longer exists or is no longer reachable in the shipping configuration. Names what removed it. |
+
+`REFUTED`, `DUPLICATE`, `SUBSUMED` and `MOOT` are the four that remove a row from the upheld count.
+They are counted and published separately, because a campaign that reports only its upheld total is
+concealing its own precision.
+
+A row is open if and only if its status does not begin with one of the closing words. That is the
+mechanical test `scripts/check-workbook.py` applies, and it is why the vocabulary is closed.
+
+---
+
+## 9. From findings to tests, and re-attacking the fix
+
+### 9.1 Every upheld row becomes a test
+
 A finding that is fixed and not pinned is a finding that returns. Every upheld row becomes a pinned
 regression test, and every finding with a stateable invariant becomes a property or fuzz harness.
-Harnesses are generated across model families like any other pass, then reviewed: a test that cannot
-fail is worth less than no test, so the mutant and vacuity gates (`properties.md §2`, P-14 and P-26)
-apply before any green result is citable.
 
-Representative suites that came out of campaign rounds:
+Harnesses are generated across model families like any other pass, then reviewed. **A test that
+cannot fail is worth less than no test**, so two gates apply before any green result is citable:
+
+- **Mutant gate.** A property counts only once a deliberately broken implementation makes it fail, and
+  the record names which mutant each property catches. Mutate the *test* as well: delete its strongest
+  assertion or one setup cheatcode. A test that still passes never exercised the behaviour that
+  cheatcode reached.
+- **Vacuity gate.** Per stateful property: record call and revert counts per selector and assert both
+  are non-trivial; assert the invariant on the seeded setup state, which is the induction base case
+  nothing else checks; ghost-count every branch gated by an operation type, a coverage precondition or
+  a clamp, and assert it fired. Cite no green invariant until its numbers are in the round record.
+
+The harness must also **write down the states its setup cannot reach**. A green run on a harness that
+never reaches undercoverage is the most dangerous artefact this campaign could produce.
+
+### 9.2 The suites that came out of campaign rounds
 
 | suite | repo-relative path |
 |---|---|
@@ -356,140 +638,362 @@ Representative suites that came out of campaign rounds:
 | exact-in monotonicity | `dex-evm/test/unit/ExactInMonotone.t.sol` |
 | impact conservation | `dex-evm/test/unit/ImpactConservation.t.sol` |
 | pricing rounding direction | `dex-evm/test/unit/PricingRounding.t.sol` |
-| pool solvency, degraded feeds | `dex-evm/test/unit/PoolSolvencyDegraded.t.sol` |
-| factory provenance (§6.2) | `dex-evm/test/unit/PoolFactoryOfficial.t.sol` |
+| pool solvency under degraded feeds | `dex-evm/test/unit/PoolSolvencyDegraded.t.sol` |
+| factory provenance | `dex-evm/test/unit/PoolFactoryOfficial.t.sol` |
 | gen-1 authority surface | `dex-evm/test/unit/Gen1Authority.t.sol` |
 | CREATE3 fleet determinism | `dex-evm/test/unit/Create3Fleet.t.sol` |
+| AIMM stateful invariants | `dex-evm/test/unit/AimmInvariants.t.sol` |
+| hub coverage-parameter dominance | `dex-evm/test/unit/HubKappaDominance.t.sol` |
+| upgrade artefact guards | `dex-evm/test/unit/ArtifactGuards.t.sol` |
 | governance quorum | `shared/evm/test/Quorum.t.sol` |
-| Rust ↔ Solidity pricing parity | `core/tests/pricing_parity.rs` |
-| quote ↔ chain parity | `back/crates/quote/tests/chain_parity.rs` |
+| Rust to Solidity pricing parity | `core/tests/pricing_parity.rs` |
+| quote to chain parity | `back/crates/quote/tests/chain_parity.rs` |
 | published-ABI pinning | `sdk/test/abi-pin.test.ts` |
 
-### 7.9 Fix, then re-attack the fix
-Gates: `method/SKILL.md §4` (**Fix batches are new attack surface**, **Fix sizing**); procedures:
-`lenses.md` LN-31 (differential re-review) and LN-32 (variant sweep of the whole bug family). The
-stage is mandatory rather than advisory because this campaign's round-2 fix batch introduced a path
-that could leave a lane unrecoverable, and round 3's `executeFeedWiden` reintroduced a bug *with a
-shipped test pinning it as intended*. **An incorrect fix is worse than none.**
+The property templates behind the stateful suites are P-01 to P-31 in
+`method/properties.md`, with the mutant gate at P-14 and the vacuity gate at P-26. The
+measured reach of formal methods on this codebase is the status table in that file's §3, quoted as
+measured and never summarised upward: bounded pure lemmas are provable, full symbolic proof of the
+pricing law is not.
 
-### 7.10 Compose before closing
-`method/SKILL.md §4` (**Compose before closing**). The pairs are already written down, so the stage
-costs a read, not a round.
+### 9.3 Fix, then re-attack the fix
 
-### 7.11 Disclose
-**A finding is published when its fix is deployed to every chain running the affected code** — not
-when it is understood, not when it is merged. Until then it is held in full, with no redacted form,
-because a redacted finding still names its surface. **Proof-of-concept exploits are never committed,
-in any repository.** The full policy, including what is published and what is held permanently, is
-`public/DISCLOSURE.md`.
+**Fix batches are new attack surface.** The differential lens is mandatory on every fix diff, and the
+variant lens sweeps the whole bug family before the fix ships.
+
+The stage is mandatory rather than advisory because of two measured events in this campaign: a
+round-2 fix batch introduced a path that could leave a lane unrecoverable, and a round-3 fix
+reintroduced a bug **with a shipped test pinning it as intended**. **An incorrect fix is worse than
+none.**
+
+**Fix sizing.** Every fix names its shape (add a requirement, reorder, clamp, new state, control flow,
+redesign) and what it could break. A requirement added on a producer-controlled field must first read
+the producer's code and measure the field on chain: enforcing an ordering the producer never promised
+is a self-inflicted liveness bug, and this campaign shipped one.
+
+### 9.4 Compose before closing
+
+Refuted and INFO items go back once, pairwise. Two individually unreachable preconditions are often
+reachable together: a halt bit that strands an exit crossed with a toll that grows with time; a dust
+push crossed with a one-update-per-block lock. The pairs are already enumerated, so the stage costs a
+read, not a round.
 
 ---
 
-## 8. The output: a residual-risk statement, not a verdict
+## 10. The stop rule
+
+**Two consecutive clean full rounds on the launch surfaces**, where a clean round files zero rows at
+any severity with every cohort's target set enumerated and marked. That is the rule. It proves that
+the audited baseline is quiet under the lens roster and model cohort declared, at the pinned commit.
+
+Three qualifiers bind it, and the coverage floor of §3 must be satisfied independently.
+
+### 10.1 Coverage qualifier
+
+A hot path below its eye budget blocks the rule outright (Rule C2). Findings-convergence is not a
+substitute for having looked.
+
+### 10.2 Surface reset
+
+**Any new or materially changed surface resets the count for every path it touches**, and enters the
+coverage floor with zero eyes.
+
+The justification is from this campaign. The only new CRITICAL, a pool-provenance ambiguity in factory
+initialisation where a sentinel value combined with an attacker-supplied treasury, was found by the
+*first* adversarial pass on a surface that did not exist when the campaign began, while the baseline
+was mid-streak with zero MEDIUM-or-above. Both facts were true at the same moment. A stop rule that
+cannot express that is a stop rule that ships the CRITICAL.
+
+### 10.3 Per-family exhaustion
+
+A model family is retired from the rotation **for a surface** after six consecutive rounds, spanning
+both scope regimes and at least one blind round, in which that family filed zero *new* rows.
+
+- *New* means new after dedup. A transvalidation is a valuable output and an explicit non-reset: it is
+  evidence the ledger is right, not evidence the family is still finding things.
+- Retirement is **per surface**. A changed surface un-retires every family.
+- Retirement is **reversible on evidence.** If another family later files a row on that surface, the
+  retired family is recalled for one round scoped to the same coupled-state group. A miss on a row a
+  second family found is recorded as a **family blind spot**, which is the most valuable calibration
+  datum the framework produces.
+- Six is a budget, not a proof.
+
+### 10.4 What the stop rule proves, and does not
+
+It bounds *effort under a stated method*. It is a **budget-exhaustion criterion with a falsifiability
+condition attached**, at the pinned commit, under the declared lens roster and model cohort, and it
+must be published in those words.
+
+It proves nothing about parts of the tree a delta-only round did not re-read, which is precisely why
+§3 blocks it independently. No form of it proves absence of bugs. The honest output of the framework
+is the residual-risk statement of §13, not a pass or a fail.
+
+---
+
+## 11. Ledger hygiene
+
+The full ledger is the source of truth. The front door (the open-row ledger, the fixed-findings
+register, the report) is **derived** from it and checked mechanically:
+
+| assertion | what it catches |
+|---|---|
+| the open set shown equals the open set in the full ledger | a row quietly dropped from the public view |
+| the totals match | a row counted twice, or not at all |
+| every archived bundle has a line | a remediation with no public trace |
+| every closed row cites a `repo@sha` | "fixed" with nothing behind it |
+| **every cited sha is an ancestor of its freeze head** | a citation to code that was never audited, or to a branch that was never merged |
+
+Editing the prose without editing the ledger desynchronises them. The check is what makes "we did not
+drop a finding" checkable rather than claimed.
+
+**Ancestry is re-checked at every release, not once at freeze.** Heads move: a fix lands, a branch is
+rebased, a colleague force-pushes. A sha that was an ancestor last week can stop being one, and a
+closed row whose commit is no longer reachable from the shipping head is an open row that looks
+closed. The check runs before any external use of the workbook and before any deployment citing it.
+
+Two mechanical rules protect the record itself. **Ids are stable and never reused**: a merged row
+keeps the earlier id, the later id survives as a `DUPLICATE` pointer, and ids cited in code or tests
+are frozen. **The record is written by the orchestrator**, never by an agent and never by hand while a
+workflow is writing it, because concurrent id allocation collides silently.
+
+The private round index is `RUNS.md`: one row per round directory, with its date, scope, method
+variant, rows filed, rows upheld, and a link to the verdict. Derived from the archive, never
+hand-maintained, and carrying no model attribution.
+
+---
+
+## 12. Perpetual auditing
+
+A campaign does not end. It reaches a stop rule at a commit, and then the ground moves under it in
+four ways.
+
+| the ground moves | the response |
+|---|---|
+| **the code changes** | surface reset (§10.2). A new or materially changed surface enters at zero eyes and inherits no convergence. |
+| **a new model family ships** | it is a new family for stop-rule purposes, because its false-negative set moved. Re-run the surfaces recorded as `single-family`, and the score-5 paths first. |
+| **a new heuristic arrives** | the input registry is re-diffed at the new HEAD of every source, and only the residue is read. The registry exists so the next sweep costs a diff and not a re-read. |
+| **a new class of incident is published** | the mechanism is added to the checklists and swept as a variant across the whole codebase, not just at the site it resembles. |
+
+Two standing consequences:
+
+- **A retired family is recalled on evidence** (§10.3), not on a schedule.
+- **Every round is re-runnable.** The provenance fields, the target-set hashes and the pinned commits
+  exist so that a round can be re-executed against a later HEAD and the *difference* reported, rather
+  than a fresh campaign started from nothing.
+
+The stop rule is therefore a statement about a commit, not about a protocol. Published as such, it
+carries its own expiry.
+
+---
+
+## 13. The output: a residual-risk statement, not a verdict
 
 The framework never emits "secure". It emits, and the published report must carry:
 
-1. **Coverage floor** (§3.1): the minimum, and the entry point that sets it.
+1. **Coverage floor**: the minimum, and the entry point that sets it.
 2. **Single-family paths**: every score-5 path signed off by one model family only.
 3. **Assumptions nothing enforces**: this campaign lists 14 in `02-spec/ALIGN-*.md`, of which three
    are violated on the live testnet today. An assumption register with live violations is more useful
    to a reader than any severity histogram.
-4. **Designed, priced, accepted risks**: for BTR, undercoverage is a *designed* persistent state
-   whose only healers are exits, deposits, donations and net inflow. That belongs in the risk
+4. **Designed, priced, accepted risks**: for this protocol, undercoverage is a *designed* persistent
+   state whose only healers are exits, deposits, donations and net inflow. That belongs in the risk
    statement, not in the findings list.
-5. **What formal methods reached**: measured, not aspirational — the per-property-class status table
-   in `method/properties.md §3`, quoted as measured, never summarised upward.
-6. **Open findings by severity, with the fix status of each.**
-7. **The corrections register** (§7.6).
+5. **What formal methods reached**, measured rather than aspirational.
+6. **Open findings by severity, with the fix status of each**, in the vocabulary of §8.
+7. **The corrections register.**
 8. **Effort, in units a reader can price**: rounds, cohorts, agent-passes, token cost, wall time, and
-   the retired/active model roster.
+   the retired and active model roster.
 
 ---
 
-## 9. Anti-gaming register
+## 14. Limits: what this method does not prove
 
-Ways a clean round can be manufactured. Each one has cost this campaign something; each is now a rule.
+Stated first, in the strongest form, because a limitations section written defensively is worth
+nothing.
+
+| limit | the honest statement |
+|---|---|
+| **absence of bugs** | Not proven, and not provable by this or any method. The stop rule is budget exhaustion with a falsifiability condition (§10.4). |
+| **the untouched tree** | A delta-only round re-reads findings sites, unlogged files and fix diffs. It says nothing about a file it did not open. Only the coverage floor speaks to that, and it speaks as a minimum with a named deficit. |
+| **novel-mechanism economics** | The structural blind spot. Every model in a cohort trained on overlapping corpora shares priors, so the worst case is a mechanism with no analogue in the training data. That is precisely the coverage toll and the impact curve: the parts of this protocol that are genuinely new. Compensating controls are derivation review, simulation and a human economist. Not more agents. |
+| **the design itself** | The campaign validates the implementation against the stated design and the derivations. It does not certify that the economic design is a good idea. |
+| **reproducibility** | The pinned commits, provenance fields and target-set hashes make a round re-executable. Sampling non-determinism and silent provider-side model updates mean it is not re-*producible* byte for byte, and any claim otherwise would be false. |
+| **static-tool coverage** | Every tool row carries a coverage tripwire because a tool can exit clean over zero analysis. The tripwires bound what was analysed; they do not bound what the tools are capable of missing, and economic and logic defects pass every one of them. |
+| **formal reach** | Bounded pure lemmas are proven. Magnitude lemmas over transcendental math are out of reach, not on a to-do list, and are routed to fuzzing and to the cross-language differential gate instead. |
+| **the off-chain and operational surface** | Key custody, physical and organisational security, incident response, and third-party chain behaviour are outside the threat model (§0.2) and were not examined. |
+| **the human arbiter** | One named person holds the final call. That is a single point of judgement, and it is disclosed as one. The mitigation is the published overturn standard and the dissent register, not a claim of infallibility. |
+
+**The standard a hostile reader will quote.** SCSVS `0x04`: *"Automated tools alone are insufficient
+to verify SCSVS compliance. All verification reports must provide conclusive, manually validated
+evidence."* The wrong answer is to argue that agents are not automated tools. The right answer is
+obligation 10 in §17: name the human validation, its sampling basis, and its rate.
+
+**The reader's prior, which we do not get to argue with.** Roughly 20% of one major project's 2025
+security submissions were AI slop and about 5% were genuine. That prior is earned. It is the reason
+this framework publishes its refutation rate rather than its finding count.
+
+---
+
+## 15. Disclosure
+
+**A finding is published when its fix is deployed to every chain running the affected code.** Not when
+it is understood. Not when it is merged.
+
+Until then it is held in full, with no redacted form, because a redacted finding still names its
+surface and a named surface is a starting point.
+
+**Proof-of-concept exploits are never committed, in any repository.** They live in gitignored scratch
+directories and are deleted or compiled away before a pass finishes.
+
+Findings on a surface that will never ship are published with that fact stated. Findings held
+permanently, if any, are disclosed as a count and a reason, never omitted silently. The full policy is
+`public/DISCLOSURE.md`.
+
+---
+
+## 16. Anti-gaming register
+
+Ways a clean round can be manufactured. Each one has cost this campaign something. Each is now a rule.
 
 | # | failure | rule |
 |---|---|---|
-| G1 | Re-running the same lens, model and prompt and counting it twice | Same model + same prompt + same session = one eye (§1). |
-| G2 | Priming an agent with a verdict so it re-confirms | Carry the path, withhold the verdict (`method/SKILL.md §0`; Rule I2). |
-| G3 | Per-file fan-out to inflate the agent count | Allocate by shared mutable state. 110 agents / 6 M tokens was tried once, hit the session limit, and is banned. |
+| G1 | Re-running the same lens, model and prompt, and counting it twice | Same model plus same prompt plus same session is one eye (§1). |
+| G2 | Priming an agent with a verdict so it re-confirms | Carry the path, withhold the verdict (Rule I2). |
+| G3 | Per-file fan-out to inflate the agent count | Allocate by shared mutable state. 110 agents at 6M tokens was tried once, hit the session limit, and is banned. |
 | G4 | Inventing a finding to make a round look diligent | Exploring a new path and reporting "safe, because X" is a complete pass. Fabrication is what breaks the stop rule, in the direction that hurts. |
-| G5 | Downgrading a defect because the component has not shipped | Severity at the shipping configuration (§7.5). |
+| G5 | Downgrading a defect because the component has not shipped | Severity at the shipping configuration (§7.4). |
 | G6 | Grepping for the success string and calling the run clean | A filter for the expected output swallows the error that says the run never happened. Check exit codes, not patterns. |
-| G7 | Treating a failed read as an empty read | RPC 429 / build failure / timeout ⇒ `FAILED`, never a value. PoC-runner semantics: `lenses.md` LN-44. Agent-side rule: `method/SKILL.md §5`. |
-| G8 | Counting a static-tool run as a lens | Static analysis is not an eye; it is a precondition to the four, and the lens that triages it is what counts (`method/SKILL.md §2`). Triage rule: `properties.md §1`. |
-| G12 | **A tool's exit code taken as evidence the tool ran** — G6 and G7 generalised from a read to a whole tool. | The coverage-tripwire rule, with the measured case and what each row must assert: `properties.md §1` (**Coverage tripwire**). |
-| G9 | A property suite that cannot fail | The mutant gate and the vacuity gate: `properties.md §2`, P-14 and P-26. No green property is citable until both pass. |
+| G7 | Treating a failed read as an empty read | A 429, a build failure or a timeout is `FAILED`, never a value (§6.3). |
+| G8 | Counting a static-tool run as a lens | Static analysis is a precondition to the four eyes; the lens that triages it is what counts (§6.6). |
+| G9 | A property suite that cannot fail | The mutant gate and the vacuity gate (§9.1). No green property is citable until both pass. |
 | G10 | Free-scope drift onto known ground | Rule S3: re-run blind before concluding the system is quiet. |
-| G11 | A clean round on a shrinking scope | The stop rule reads the *shipping* surface. One round verified two mandated allowlists **absent** — a clean round describing a system smaller than the one being launched. |
+| G11 | A clean round on a shrinking scope | The stop rule reads the *shipping* surface. One round verified two mandated allowlists **absent**: a clean round describing a system smaller than the one being launched. |
+| G12 | A tool's exit code taken as evidence the tool ran | G6 and G7 generalised from a read to a whole tool. Every tool row carries a minimum coverage assertion (§6.6). |
+| G13 | Counting cross-family agreement as extra findings | Agreement is evidence, never a second row (Rule M4). |
+| G14 | Closing a row against a commit that is not in the shipping history | Ancestry assertion, re-run every release (§11). |
+| G15 | Resolving a disagreement by re-prompting until it agrees | Disagreements go to debate and to the dissent register (§6.8). A re-prompt is not a third opinion. |
 
 ---
 
-## 10. Publication obligations
+## 17. Publication obligations
 
 Thirteen things a firm's report answers, and which a professional reader is entitled to demand of an
 agentic campaign. Each row states the position today and the control that closes it.
 
 | # | obligation | in place today | planned control |
 |---|---|---|---|
-| 1 | **Scope freeze and commit pinning** | Nine repo heads pinned at freeze, clean working trees, with a mechanical ancestry assertion over every cited sha (§7.1). | Define whether a mid-campaign head move is a new round, a delta round or a stop, and record that classification per move. |
-| 2 | **Scope in, scope out, both listed** | The in-scope file set is pinned by the freeze. | Publish the exclusion list alongside it — out-of-scope paths, and third-party boilerplate marked by origin (Solady / OpenZeppelin / ours) — as SCSVS requires and ToB publishes under *Coverage Limitations*. |
-| 3 | **Severity rubric with an external mapping** | Tiers, the shipping-configuration doctrine and the CRITICAL/HIGH reservation (§7.5); the prerequisite-tier cap. | Publish **Difficulty** as a second axis (ToB) and **`Undetermined`** as a first-class verdict, show that the cap reduces to the standard axes rather than replacing them, and map to Immunefi v2.3 and the contest H/M thresholds. |
-| 4 | **Who arbitrates, under what standard** | A named lead engineer holds the final call, distinct from every finding and refuting reviewer, with an overturn standard of "clearly wrong" rather than "I disagree" (§1). Two refuters, tie-broken by a third (§7.4). | Publish the time-boxed escalation window and its cost, so refuted items do not re-litigate every round, and record arbitration decisions with their basis. |
-| 5 | **Dedup stated as a test** | A location-shaped key: `(contract, function, state vars, invariant, fix shape)`. Cross-family agreement is evidence, never a second row. | Adopt the industry's cause-shaped test alongside it — same root cause, at least Medium impact, a valid attack path — with the operational check *does fixing the root cause eliminate it*. |
-| 6 | **False-positive rate, measured** | The inputs exist: candidates raised, candidates surviving refutation, rows surviving arbitration, rows reaching a reproduced PoC, all recorded per pass under Rule M1. | Compute and publish the ratio, per model family. A framework that will not publish its precision is asking for faith. |
-| 7 | **Coverage evidence, positive and negative** | `EYES.md` records every pass with the `path:line` it cited; the floor is reported as a minimum naming its entry point (Rule C1). | Extend the record to the negative case: per entry point, which lenses returned `N/A` with a reason and which were **never reached**. Passed controls as well as failed ones. |
-| 8 | **What the stop rule proves, and does not** | §6.4, in the words it must be published in: a budget-exhaustion criterion with a falsifiability condition attached, at the pinned commit, under the declared roster. | — |
-| 9 | **Reproducibility** | Model family and version, date, lens, scope regime, priming and target-set hash are recorded per pass (Rule M1). | Publish skill-file hashes, effort settings, agent counts, wall clock, token spend, the ledger, the coverage log and the *failed* search patterns; and state plainly what is **not** reproducible — sampling non-determinism, and provider-side model updates that silently change the cohort. |
-| 10 | **Who reviewed the reviewers** | Two-refuter review with a third-reviewer tie-break, a dissent register, and a human arbiter above both (§7.4, §7.6). | Publish which rows a human checked, on what sampling basis and with what qualification; whether any party outside the cohort re-ran a round; and **the disagreement rate between model families on the same finding**, as a number. That last metric is computable today and is the one that carries the cohort argument. |
-| 11 | **Effort in a comparable unit** | Agent-passes × model × wall clock and compute spend, so a reader can price the claim against a firm's engineer-weeks. | Publish the conversion explicitly rather than leaving the reader to make it. |
-| 12 | **Non-goals, stated** | Out of scope by design: live-incident response, key-custody review, operational security review, and validation of the economic model's *design* beyond what the stated derivations permit. | Map to the Rekt Test and publish which of the twelve are passed and which are not. The contrast is more credible than a clean sheet. |
-| 13 | **The named blind spot** | Every model in a cohort trained on overlapping corpora shares priors, so the cohort has a structural worst case: **novel-mechanism economics with no analogue in the training data.** That is precisely the coverage toll and the quartic impact curve — the parts of this protocol that are genuinely new. This row is stated as a limitation, not a solved item. | Compensating controls are derivation review, simulation, and a human economist — not more agents. Publishing the blind spot is what separates a framework from marketing. |
+| 1 | **Scope freeze and commit pinning** | Nine repository heads pinned at freeze, clean working trees, with a mechanical ancestry assertion over every cited sha (§6.1, §11). | Define whether a mid-campaign head move is a new round, a delta round or a stop, and record that classification per move. |
+| 2 | **Scope in and scope out, both listed** | The in-scope file set is pinned by the freeze. | Publish the exclusion list beside it: out-of-scope paths, and third-party boilerplate marked by origin, as SCSVS requires and as firms publish under *Coverage Limitations*. |
+| 3 | **Severity rubric with an external mapping** | The matrix, the ordering, the shipping-configuration doctrine and the CRITICAL/HIGH reservation (§7). | Publish difficulty as a second axis and `Undetermined` as a first-class verdict in the report template, show that the prerequisite cap reduces to the standard axes rather than replacing them, and map the tiers to the public severity scales a non-specialist reader already knows. |
+| 4 | **Who arbitrates, under what standard** | A named lead engineer holds the final call, distinct from every finding and refuting reviewer, overturn standard "clearly wrong". Two refuters, tie-broken by a third (§6.7, §6.8). | Publish the time-boxed escalation window and its cost, so refuted items do not re-litigate every round, and record arbitration decisions with their basis. |
+| 5 | **Dedup stated as a test** | The location-shaped key and the six merge situations (§6.9). Cross-family agreement is evidence, never a second row. | Publish the cause-shaped test's outcome alongside the key's on every merged pair, so the two can be compared by a reader. |
+| 6 | **False-positive rate, measured** | The inputs exist: candidates raised, candidates surviving refutation, rows surviving arbitration, rows reaching a reproduced proof of concept, all recorded per pass under Rule M1. | Compute and publish the ratio, per model family. A framework that will not publish its precision is asking for faith. |
+| 7 | **Coverage evidence, positive and negative** | Every pass records the `path:line` it cited; the floor is reported as a minimum naming its entry point (§3.4). | Complete the negative record for every entry point: which lenses returned `N/A` with a reason, and which were never reached. |
+| 8 | **What the stop rule proves, and does not** | §10.4 and §14, in the words they must be published in. | Nothing outstanding. |
+| 9 | **Reproducibility** | Model family and version, date, lens, scope regime, priming and target-set hash recorded per pass (Rule M1). | Publish skill-file hashes, effort settings, agent counts, wall clock, token spend, the ledger, the coverage log and the *failed* search patterns; and state plainly what is not reproducible (§14). |
+| 10 | **Who reviewed the reviewers** | Two-refuter review with a third-reviewer tie-break, a dissent register, and a human arbiter above both. | Publish which rows a human checked, on what sampling basis and with what qualification; whether any party outside the cohort re-ran a round; and **the disagreement rate between model families on the same finding**, as a number. That metric is computable today and it is the one that carries the cohort argument. |
+| 11 | **Effort in a comparable unit** | Agent-passes by model by wall clock, and compute spend, so a reader can price the claim against a firm's engineer-weeks. | Publish the conversion explicitly rather than leaving the reader to make it. |
+| 12 | **Non-goals, stated** | §0.2 and §14: no live-incident response, no key-custody review, no operational security review, and no validation of the economic model's *design* beyond what the stated derivations permit. | Map to the Rekt Test and publish which of the twelve are passed and which are not. The contrast is more credible than a clean sheet. |
+| 13 | **The named blind spot** | Novel-mechanism economics with no analogue in the training data, stated as a limitation and not as a solved item (§14). | Compensating controls are derivation review, simulation and a human economist. Publishing the blind spot is what separates a framework from marketing. |
 
-### 10.1 The standard a hostile reader will quote
+### 17.1 Corrections to the received wisdom
 
-SCSVS `0x04`: *"Automated tools alone are insufficient to verify SCSVS compliance. All verification
-reports must provide conclusive, manually validated evidence."*
+The twelve corrections this campaign verified, including the ten-axis code-maturity scorecard, the
+Rekt Test provenance, the non-existent "two firms, same codebase" overlap study and its computable
+substitute, and a widely repeated scope-drift rule that exists in no primary source, are stated once
+with their sources in `method/landscape.md`. Nothing in a published report may restate one
+without citing it there.
 
-The wrong answer is to argue that agents are not automated tools. The right answer is obligation 10:
-name the human validation, its sampling basis, and its rate.
-
-### 10.2 Corrections to the received wisdom
-
-The twelve corrections this campaign verified — ToB's ten Solidity maturity axes, the Rekt Test
-provenance, the non-existent "two firms, same codebase" overlap study and its computable substitute,
-the mis-attributed Consensys scope-drift rule, and the rest — are stated once, with their sources, in
-`method/landscape.md` (**Corrections this sweep made to received wisdom**). Nothing in a
-published report may restate one without citing it there.
-
-One prescription belongs here rather than in the registry: Dedaub's published position makes
-mathematical correctness *secondary* and the client's job to specify. Use their reports as prior art
-for BTR's code shape; do not cite their methodology as authority for economic review as a first-class
-deliverable.
+One prescription belongs here rather than in the registry. At least one firm's published position
+makes mathematical correctness *secondary* and the client's job to specify. Use such reports as prior
+art for code shape. Do not cite that methodology as authority for treating economic review as a
+first-class deliverable, because this framework treats it as the first-class deliverable.
 
 ---
 
-## 11. What this campaign has produced
+## 18. What this campaign has produced
 
-Figures are generated from the record, never typed. Regenerate with `scripts/check-workbook.py`
-before any external use, and never take an effort figure from a hand-maintained index.
+Figures are generated from the record, never typed. Regenerate with `scripts/check-workbook.py` before
+any external use, and never take an effort figure from a hand-maintained index.
 
 | metric | value | source |
 |---|---|---|
-| round directories | 278 | `ls archive/2026-09-15/rounds` |
-| ledger rows ever filed | **833** | `LEDGER.md` + `archive/2026-09-15/LEDGER-FULL.md` |
-| — of which filed by the 2026-09-16 review | **99** | `LEDGER.md` |
-| repo heads pinned at freeze | 9 | `00-scope/FREEZE.md` |
-| formal | halmos: skew bounds + monotonicity proven; toll lemmas timeout | `06-formal/`, `properties.md §3` |
+| round directories | 278 | `RUNS.md`, derived from `archive/2026-09-15/rounds` |
+| ledger rows ever filed | **833** | the full ledger plus the open-row ledger |
+| of which filed by the 2026-09-16 review | **99** | the open-row ledger |
+| repository heads pinned at freeze | 9 | `00-scope/FREEZE.md` |
+| formal | bounded skew and monotonicity lemmas proven; magnitude lemmas out of reach | `06-formal/`, `properties.md §3` |
 | stop rule | not yet exercised on the current mains | `README.md`, `REPORT.md` |
 
 ---
 
-## 12. Files
+## 19. Files
 
-The file roster and what each one owns: `method/SKILL.md §6`. `method/routing.md` is
-read first inside a round; this document is read once, outside one. This file says *why* rounds are
-shaped as they are; `SKILL.md` runs one. Process artefacts for the 2026-09-16 review are archived
-under `archive/2026-09-16-process/` (`source-map.json` maps every input).
+| file | owns |
+|---|---|
+| `METHODOLOGY.md` | this document: why rounds are shaped as they are. Read once, outside a round. |
+| `method/SKILL.md` | the round runner: token discipline, loop, eye budget, gates. Read to run a round. |
+| `method/routing.md` | signal to load. Read first inside a round. |
+| `method/lenses.md` | lens standing orders, coupled-state map, verification protocol. |
+| `method/aimm-checklist.md` | protocol-native checklist items, six sections. |
+| `method/properties.md` | property templates, tool pipeline with coverage tripwires, formal bridge. |
+| `method/landscape.md` | input registry with provenance, duplication measurement, rejected and unreachable lists. Never loaded by a cohort. |
+| `RUNS.md` | private round index. Derived from the archive. |
+| `public/DISCLOSURE.md` | the disclosure policy in full. |
+
+---
+
+## Appendix A. Prior art, and what the literature permits us to claim
+
+Trimmed from the input registry. Every figure here is measured by the cited source, not by this
+campaign, and the full provenance is in `method/landscape.md`.
+
+### A.1 LLM-assisted auditing
+
+| work | result | what it means for this framework |
+|---|---|---|
+| **GPTScan** (ICSE 2024) | Raw model precision 57.14% on hard logic bugs at 83.33% recall. The static-confirmation step cut false positives by roughly two-thirds. | Confirmation is not optional. This is the empirical basis for refute-first (§6.7) and for the math-bounds gate: an unconfirmed model claim is a coin flip dressed as a finding. |
+| **Self-consistency** (Wang et al. 2022) | Majority vote over sampled reasoning paths raises accuracy. | Supports cohorts, but it is *same-model resampling*. It is not evidence for model-family diversity, and this framework does not cite it as such (Rule M5). |
+| **LLM-as-a-judge** (Zheng et al. 2023) | Model judges agree with human preference above 80%, roughly inter-human agreement. | The ceiling on what an automated judge can do. It is why a judge exists in the pipeline at all. |
+| **Rating Roulette** (2025) | Judge self-consistency by Krippendorff's alpha as low as 0.27 to 0.56. | **A judge that disagrees with itself cannot arbitrate.** This is why arbitration is a named human and why splits go to a third reviewer rather than a re-run. |
+| **Bias in the Loop** (2026) | Framing bias swings judge output by +31.6 points; verbosity bias by -15.7; baseline self-consistency as low as 50.4%. | The direct justification for the neutral primer (§6.2), for stripping scores and labels before triage, and for banning persona conditioning. |
+| **Curl AI-slop measurement** (2025) | About 20% of one year's security submissions were AI slop; about 5% genuine. | The reader's prior. It is earned, and it is why §17 obligation 6 requires a published precision rate. |
+| **LogicScan, LLM4Vuln, SmartBugs, SolidiFI, AuditGPT, SmartAuditFlow** | Not fetched, or not searched in the 2026-09-09 sweep. | Recorded as a **gap, not an absence**. A framework that lists only the literature it read as if that were the literature is doing the thing it accuses others of. |
+
+### A.2 Where findings actually come from
+
+| work | result | consequence |
+|---|---|---|
+| **Code4rena community findings**, 394 contests, 55,461 rows | 33.5% of Highs and 42.3% of Mediums were found by exactly one of a median 39 wardens. | The empirical case for many independent readers rather than one thorough one. It is the numeric backbone of M1 and M2. |
+| **ack3 H1-2026 incident dataset**, 135 incidents | 67.6% of exploit paths at audited victims lay **outside the audit scope**, carrying 94.4% of that subset's dollars. Median audit age at an in-scope incident: 18 months. | Scope beats method. This is Rule S4: point free cohorts at the periphery, not at the most-audited kernel. |
+| **SoK: DeFi Attacks** (IEEE S&P 2023), 181 incidents | A protocol-*design* layer accounts for 40% of incidents with 6% tool coverage, against 20% for the code layer. Exactly 1 of 181 triggered an emergency pause within the first hour. | Economic review is a first-class deliverable, not an appendix. And a pause lever nobody pulls in time is not a control. |
+| **Web3Bugs** (ICSE 2023), 492 labelled bugs | 79.2% of exploitable bugs need a high-level semantic oracle to detect. | Static tools cannot be the audit. They are the precondition (§6.6). |
+| **DeFiLlama hacks**, 1,261 incidents, $20.64B | Key compromise: 12.1% of incidents, **41.4% of all dollars**. Frontend and infrastructure: 95 incidents, $1,037M. | Blast radius is published as its own axis (§7.3), and the periphery is in scope. |
+| **Audit-at-launch against breach probability**, 4,000+ protocols | Not statistically significant. | "It was audited" is never a compensating control, in this ledger or anyone's. |
+
+### A.3 Firm process, adopted or rejected
+
+| practice | source | disposition here |
+|---|---|---|
+| Effort published in engineer-weeks with headcount and dates | firm reports | Adopted, translated to agent-passes and compute spend (§17 obligation 11). |
+| A *Coverage Limitations* section | firm reports | Adopted as §14 and §17 obligation 2. |
+| Difficulty as a second axis; `Undetermined` as a verdict | firm reports | Adopted (§7.3). |
+| A code-maturity scorecard | firm reports | Noted, and noted as language-dependent: the axis count differs between that firm's own reports, which is one of the corrections in the registry. |
+| Heterogeneous multi-person teams, senior arbitration | published engagement handbooks | This is M1 and M3, and the reason the framework exists in this shape. |
+| Two senior researchers pairing, understanding and subversion in the same head | firm blog | Adopted as the paired-lens cohort. |
+| Same-root-cause dedup, judge and sponsor separation, escalation with a penalty | contest platform rules | Adopted alongside the location-shaped key (§6.9). Escalation cost is an open obligation. |
+| A mandatory coded proof of concept for High and Medium | contest platform rules | Adopted as the promotion gate (§6.3). |
+| Documented behaviour, therefore dismiss | inbound-report triage brocards | **Rejected with reasons** (§6.7). Written for third-party libraries whose documentation is a published contract. |
+| Mathematical correctness as secondary, and the client's job to specify | firm documentation | **Rejected as authority** (§17.1). Economic correctness is the first-class deliverable here. |
+| Self-reported vendor AI-auditor recall benchmarks | vendor pages | **Rejected as marketing.** No disclosed methodology. |
+
+### A.4 The residue
+
+The 2026-09-09 sweep registered 197 sources, cloned and read 92 at a pinned commit, and measured 88%
+to 90% duplication against the toolkit that already existed. The residue clustered in five places that
+no checklist pack contains: firm process and report anatomy, coverage-ratio AMM prior art, compiler
+and linked-library internals, invariant-harness doctrine, and the off-chain surface.
+
+The flat return on more checklist items is itself a measured finding. It is why the next sweep is
+pointed at scope, and why the three multipliers in §0.3, and not the knowledge layer, are what this
+framework claims.

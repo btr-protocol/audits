@@ -41,7 +41,7 @@ P2 hypothesise → archive/2026-09-16-process/03-hypotheses/HYPOTHESES.md, one f
 P3 round N     → find (lenses) → dedup (key) → refute → VERDICT.md + archive/2026-09-15/LEDGER-FULL.md + archive/2026-09-15/EYES.md (then re-derive root LEDGER.md, run scripts/check-workbook.py)
 P4 fix         → owner ships; every fix diff gets a delta re-review (differential lens)
 P5 converge    → baseline stop = TWO consecutive full rounds upholding zero findings at any
-                 severity. Two further stop rules and the coverage-floor block: `METHODOLOGY.md §6`
+                 severity. Its qualifiers and the coverage-floor block: `METHODOLOGY.md §10` and `§3`
 ```
 
 Concept (economic/oracle/governance) rounds and code rounds run as two tracks inside one round;
@@ -146,5 +146,8 @@ A failed read is not an empty read: RPC 429 ⇒ FAILED, never a value.
 duplication measurement, and the rejected/unreachable lists. **Reference only: never loaded by a
 cohort.**
 `~/.claude/skills/solidity-audit/checklists/01..21` — generic Solidity; cite by file id.
-`audit/METHODOLOGY.md` — campaign doctrine: independence axes, coverage floor, model rotation, stop
-rules, publication obligations. This file runs a round; that one says why rounds are shaped so.
+`audit/METHODOLOGY.md` — campaign doctrine: threat model, independence axes, coverage floor, model
+rotation, severity matrix, disposition vocabulary, stop rule, disclosure, publication obligations.
+This file runs a round; that one says why rounds are shaped so.
+`audit/RUNS.md` — private index of every round: date, scope, method variant, rows filed/upheld,
+verdict link. Derived from the archive; never hand-edited, never model-attributed.

@@ -1,6 +1,6 @@
 # BTR audits
 
-Security review of the BTR AIMM: an oracle-priced, multi-asset AMM with coverage-based LP
+Internal audits of the BTR AIMM: an oracle-priced, multi-asset AMM with coverage-based LP
 protection. Internal reviews and third-party reports both land here.
 
 Read [`DISCLOSURE.md`](DISCLOSURE.md) first. It says what is published and what is held, and why.
