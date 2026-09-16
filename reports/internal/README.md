@@ -3,5 +3,7 @@
 Published under `../../DISCLOSURE.md`: a finding appears here once its fix is deployed to every
 chain running the affected code.
 
-The register is intentionally empty while the protocol is pre-launch. That is the policy working,
+Reports published here, newest first:
+
+- `2026-09-16.md` — 2026-09 security review, open-source scope (contracts, sdk, front, core).
 not an absence of findings.
