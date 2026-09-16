@@ -33,11 +33,13 @@ So the process is the part worth publishing, and it is what is here.
 
 ## Stop rule
 
-A campaign stops after four consecutive rounds that raise nothing new — not when a round is quiet,
-and not when a deadline arrives. The distinction matters: this campaign has hit four consecutive
-clean rounds and then broken the streak more than once, because a new surface always yields a new
-round of low-severity findings. Severity converges long before count does, and only one of those is
-evidence of anything.
+A campaign stops after two consecutive clean full rounds on the launch surfaces — not when a round
+is quiet, and not when a deadline arrives. A clean round is one that files zero rows at any
+severity with every reviewer's target set enumerated and marked. The distinction matters: this
+campaign has hit a clean streak and then broken it more than once, because a new surface always
+yields a new round of low-severity findings, and any new or materially changed surface resets the
+count for every path it touches. Severity converges long before count does, and only one of those
+is evidence of anything.
 
 `METHODOLOGY.md` carries the reasoning, including why a surface that did not exist when the campaign
 began resets the count for every path it touches.
