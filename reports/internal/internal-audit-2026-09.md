@@ -30,12 +30,11 @@ Every row ever filed in the campaign, and what reached this page.
 | Not a real finding | 179 | 102 duplicate, 28 subsumed, 27 moot, 22 refuted |
 | Real findings | 650 | the campaign's actual defect and design population |
 | In open-source scope | 437 | located in `dex-evm`, `shared`, `sdk`, `front` or `core` |
-| Published here | 434 | 285 of them above informational; 3 open rows are held until their residual closes |
+| Published here | 433 | 284 of them above informational; 4 rows are held until their residual closes |
 
 The remaining 213 real findings are located in the services, the keepers and the operational
 environment. They are out of the public scope and are disclosed to auditors under
-non-disclosure. Four price-feed rows owned by the upstream data team are tracked separately and
-are not counted above.
+non-disclosure. Four price-feed rows are tracked with the upstream feed provider and are not counted above.
 
 Published rows by severity and disposition:
 
@@ -43,10 +42,10 @@ Published rows by severity and disposition:
 |---|---|---|---|---|
 | Critical | 0 | 0 | 0 | 0 |
 | High | 33 | 0 | 0 | 33 |
-| Medium | 83 | 2 | 1 | 86 |
+| Medium | 82 | 2 | 1 | 85 |
 | Low | 156 | 3 | 7 | 166 |
 | Informational | 53 | 13 | 83 | 149 |
-| **Total** | **325** | **18** | **91** | **434** |
+| **Total** | **324** | **18** | **91** | **433** |
 
 "Fixed" means code or documentation changed and the change is an ancestor of the published
 component head. "Accepted" means the behaviour is the intended design and carries an operational
@@ -153,7 +152,7 @@ Rule R7 self-heal was added: on the first band refusal a lane quarantines itself
 
 Fixed. The lever hardening is verified on the fix branch. The R7 self-heal is fixed on `main` and is not deployed: the oracle is not upgradeable, so it lands with the redeploy and the 37-leg repoint. The tier split ships in V5.
 
-**Rows.** A-003, A-048, A-054, A-055, A-056, A-060, A-061, A-063, A-064, A-066, A-067, A-068, A-077, A-078, A-085, A-164, A-179, A-588, A-693 (19 rows)
+**Rows.** 19 rows.
 
 ### F-02  Role bootstrap and the quorum check were fail-open before the signer set was seeded
 
@@ -205,7 +204,7 @@ Unsigned marks on an unseeded oracle mean the price surface has no authority beh
 
 Closed.
 
-**Rows.** A-1002, A-1136, A-1204 (3 rows)
+**Rows.** 3 rows.
 
 ### F-03  Pools created through the permissionless factory path were born with no authority and no fee sink
 
@@ -250,7 +249,7 @@ Commits: [`f5c281f7`](https://github.com/btr-protocol/dex-evm/commit/f5c281f7cdc
 
 Fixed. Verified 2026-09-11; the residual informational rows were closed on the 2026-09-14 review.
 
-**Rows.** A-211, A-212, A-232, A-783, A-543, A-666, A-527, A-526, A-542, A-681, A-524 (11 rows)
+**Rows.** 11 rows.
 
 ### F-04  Hook ledger writers booked reserves, liabilities and the liquidity index without proving the underlying balance moved
 
@@ -292,7 +291,7 @@ Commits: [`e36dbb86`](https://github.com/btr-protocol/dex-evm/commit/e36dbb86c4e
 
 Fixed. Verified 2026-09-10 and 2026-09-11.
 
-**Rows.** A-748, A-263, A-716, A-737, A-738, A-522 (6 rows)
+**Rows.** 6 rows.
 
 ### F-05  Genesis deploy scripts could brick an immutable mainnet deployment
 
@@ -337,7 +336,7 @@ Commits: [`921bbdbf`](https://github.com/btr-protocol/dex-evm/commit/921bbdbf868
 
 Closed. Script fixes landed 2026-09-15; the deploy-record scaffold was verified on the 2026-09-14 review.
 
-**Rows.** A-1100, A-1312, A-1106, A-1105, A-1113, A-1111, A-1112, A-599 (8 rows)
+**Rows.** 8 rows.
 
 ### F-06  Oracle signer and reference governance had no tests, and revoke could leave the quorum permanently unsatisfiable
 
@@ -384,7 +383,7 @@ Commits: [`44b8858c`](https://github.com/btr-protocol/dex-evm/commit/44b8858cf94
 
 Closed.
 
-**Rows.** A-1200, A-1201 (2 rows)
+**Rows.** 2 rows.
 
 ### F-07  The release shipped an unratified governance ladder and a beacon upgrade delay that contradicted it
 
@@ -423,7 +422,7 @@ Commits: [`e4c3cb19`](https://github.com/btr-protocol/dex-evm/commit/e4c3cb19ba8
 
 Closed. Ratified 2026-09-14, verified on the same review.
 
-**Rows.** A-1400 (1 row)
+**Rows.** 1 row.
 
 ### F-08  Guardian and foreign-pool authority lanes reached pools the protocol does not administer, allowing a permanent brick and an LP-facing rug
 
@@ -478,9 +477,9 @@ Commits: [`e13745ae`](https://github.com/btr-protocol/dex-evm/commit/e13745ae095
 
 #### Status
 
-Fixed. Foreign-pool cancel and collapse verified 2026-09-10; guardian seal verified 2026-09-11; natspec verified 2026-09-11. Three rows are closed rather than fixed: the partial batch sweep (`try`/`catch` plus `BatchLegSkipped`, no retry queue) is specified behaviour and was closed as a design note on 2026-09-14; the sweep-completeness caveat and the missing `AssetHalted` emission on collapse and batch legs were closed as observability-only with no fund path. Guardian sealing of a not-yet-listed sentinel pool is an accepted residual: foreign and predicted pools are not guardian-sealable, and the listing ceremony seals in one broadcast.
+Fixed. Foreign-pool cancel and collapse verified 2026-09-10; guardian seal verified 2026-09-11; natspec verified 2026-09-11. Three rows are closed rather than fixed: the partial batch sweep (`try`/`catch` plus `BatchLegSkipped`, no retry queue) is specified behaviour and was closed as a design note on 2026-09-14; the sweep-completeness caveat and the missing `AssetHalted` emission on collapse and batch legs were closed as observability-only with no fund path. Pools are sealed in the listing broadcast.
 
-**Rows.** A-207, A-214, A-215, A-217, A-219, A-264, A-549, A-691, A-744, A-779, A-942 (11 rows)
+**Rows.** 11 rows.
 
 ### F-09  The Rust pricing mirror settled a sell leg in spoke scale against a base-scale hub book
 
@@ -523,7 +522,7 @@ Commits: [`6440d93`](https://github.com/btr-protocol/core/commit/6440d9328e91d8b
 
 Fixed, verified 2026-09-14. The `kappa == 0` parity row was conditional on the matching contract change landing.
 
-**Rows.** A-005, A-1109, A-1411 (3 rows)
+**Rows.** 3 rows.
 
 ### F-10  The front end transaction builder debited the full typed amount on the first leg and pinned token decimals by symbol
 
@@ -568,7 +567,7 @@ Commits: [`c24b397`](https://github.com/btr-protocol/front/commit/c24b3977d525ed
 
 Fixed 2026-09-16.
 
-**Rows.** A-1584, A-1585, A-1586 (3 rows)
+**Rows.** 3 rows.
 
 ### F-11  The client-side quote read chain risk parameters that did not match the chain, first failing open on the coverage wall and then failing closed on every pool
 
@@ -612,7 +611,7 @@ Commits: [`c9b0b44a`](https://github.com/btr-protocol/front/commit/c9b0b44a45e0a
 
 Fixed. The fail-open default and the profile drift were closed on 2026-09-10 and 2026-09-11; the `bigint` regression was found by the 2026-09-11 validation pass and fixed in the same wave.
 
-**Rows.** A-104, A-105, A-900 (3 rows)
+**Rows.** 3 rows.
 
 ### F-12  The safety console served a stale oracle ABI, leaving the guardian pause selector empty during a live incident
 
@@ -628,7 +627,7 @@ The console resolved the oracle ABI by name and was served the V1 interface for 
 
 ```ts
 // front/src/pages/safety/SafetyLevers.tsx:107
-  // A-161: the roster is a BUILD-TIME fact (SDK lane map x venue feedIds), never an on-chain
+  // the roster is a BUILD-TIME fact (SDK lane map x venue feedIds), never an on-chain
   // enumeration - no oracle generation exposes `getFeedIds()`, and asking a V4 for it reverts, which
   // is what left this selector (the emergency pause lever) permanently empty. `laneFeedMeta` is the
   // same roster the transparency page reads; taking it whole (via `useOracleData`) would also drag
@@ -653,7 +652,7 @@ Commits: [`48587b54`](https://github.com/btr-protocol/front/commit/48587b54b2482
 
 Fixed. Verified by the 2026-09-11 validation pass. The copy, veto-card and confirmation-preview rows were closed as informational on 2026-09-09 and 2026-09-10 under the low-minimum bar.
 
-**Rows.** A-161, A-166, A-505, A-769, A-772, A-809 (6 rows)
+**Rows.** 6 rows.
 
 ### F-13  Coverage-sensitive LP paths settled at per-slice rates, letting an exit outrun the pool's own haircut
 
@@ -708,7 +707,7 @@ Commits: [`b563405f`](https://github.com/btr-protocol/dex-evm/commit/b563405f08d
 
 Fixed, verified 2026-09-10 and 2026-09-11. The per-node reference-band bound is accepted and recorded, with composed drift priced by a coverage wall at least as large as the larger of the reference band and the per-push deviation band, re-verified 2026-09-14. The remaining informational rows were closed on 2026-09-10 under the low-minimum bar.
 
-**Rows.** A-001, A-025, A-026, A-199, A-231, A-250, A-540, A-556, A-560, A-610, A-665, A-684, A-907 (13 rows)
+**Rows.** 13 rows.
 
 ### F-14  An off-factory beacon clone was a fully attacker-governed pool running the real implementation
 
@@ -758,7 +757,7 @@ Commits: [`2077627d`](https://github.com/btr-protocol/dex-evm/commit/2077627dfb3
 
 Fixed. The authority anchor and the clone reopen are closed by the same commit and pinned by authority tests; the enumeration and sweep rows landed in the 2026-09-15 remediation wave.
 
-**Rows.** A-781, A-908, A-923, A-941, A-1120 (5 rows)
+**Rows.** 5 rows.
 
 ### F-15  Liability re-denomination applied the pool coverage rate twice and minted outside the deposit gates
 
@@ -799,7 +798,7 @@ Commits: [`97638d2e`](https://github.com/btr-protocol/dex-evm/commit/97638d2e5e5
 
 Closed.
 
-**Rows.** A-1000, A-1102, A-1126 (3 rows)
+**Rows.** 3 rows.
 
 ### F-16  Failed or stale chain sub-reads were rendered as permissive values instead of as unknown
 
@@ -842,7 +841,7 @@ Commits: [`2c8892a`](https://github.com/btr-protocol/front/commit/2c8892a0d2fe6f
 
 Fixed 2026-09-16.
 
-**Rows.** A-1587, A-1588, A-1589 (3 rows)
+**Rows.** 3 rows.
 
 ### F-17  Exact-in swaps were non-monotone above the output argmax, so a larger input returned a smaller output
 
@@ -905,7 +904,7 @@ Commits: [`43483cf`](https://github.com/btr-protocol/core/commit/43483cf6f918644
 
 Fixed, with the recovery bound accepted as designed on 2026-09-11 and the informational design notes closed on 2026-09-09 and 2026-09-10.
 
-**Rows.** A-188, A-004, A-090, A-023, A-031, A-517, A-525, A-676, A-766, A-777, A-558 (11 rows)
+**Rows.** 11 rows.
 
 ### F-18  Pool configuration writers lacked bounds, un-stage levers and roster invariants
 
@@ -950,7 +949,7 @@ Commits: [`f5c281f7`](https://github.com/btr-protocol/dex-evm/commit/f5c281f7cdc
 
 Fixed. Coverage is pinned by `PoolLifecycle.t.sol:1096`, `TokenContainment.t.sol`, `PoolAnchorTree.t.sol:547` and `DeployBaseSchedule.t.sol:46-50`.
 
-**Rows.** A-784, A-208, A-202, A-089, A-136, A-150, A-793, A-795 (8 rows)
+**Rows.** 8 rows.
 
 ### F-19  A single unusable leg mark froze every credit and cross-exit path pool-wide
 
@@ -971,7 +970,7 @@ Separately, the sum ran every leg's mark through `markToBaseWad` under only the 
     for (uint256 i; i < n; ++i) {
       address leg = $.legs[i];
       IPool.Asset storage a = $.assets[leg];
-      // A-1121: a 0/0 leg contributes exactly 0 to BOTH sums, so skip it BEFORE the oracle read. A
+      // a 0/0 leg contributes exactly 0 to BOTH sums, so skip it BEFORE the oracle read. A
       // dead feed on a funded-then-emptied leg otherwise returned (0,false,..) and froze deposits,
       // cross exits and harvest pool-wide. The skip is exact: r == l == 0 adds nothing either way.
       if (a.reserves == 0 && a.liabilities == 0) continue;
@@ -994,7 +993,7 @@ Commits: [`d9a6b556`](https://github.com/btr-protocol/dex-evm/commit/d9a6b556b0f
 
 Closed on 2026-09-15. Pinned by `PoolSolvency.t.sol:615`, `PoolWriteDown.t.sol:183` and `PoolSolvencyDegraded.t.sol:96,:119,:161`.
 
-**Rows.** A-1121, A-1305, A-1300 (3 rows)
+**Rows.** 3 rows.
 
 ### F-20  Testnet-only deploy ceremony paths ran unguarded on a mainnet-class chain
 
@@ -1034,7 +1033,7 @@ The ceremony now refuses testnet lanes when the manifest declares `class=mainnet
 
 Fixed 2026-09-16. Two informational rows are accepted rather than fixed: the published `events.json` carries V5 `FeedRegistered` and `FeedWiden*` shapes while the live Arc deployment still emits V4 shapes, which is handled as a step in the Arc upgrade runbook and not in code; and pool-level solvency stays unarmed after a beacon swap until a governance `BACKFILL_LEGS` call, with no reinitializer.
 
-**Rows.** A-1500, A-1501, A-1503, A-1504, A-1505, A-1506, A-1507, A-1508 (8 rows)
+**Rows.** 8 rows.
 
 ### F-21  Optimizer settings and unpinned artifacts broke cross-repo bytecode parity and left upgrade gates without a machine check
 
@@ -1076,7 +1075,7 @@ A stale or foreign library link, a reordered `RiskFences` struct, or a swapped `
 
 Fixed. Closed at the rev2 signoff.
 
-**Rows.** A-1129, A-1130, A-1132, A-1209, A-1210, A-1401 (6 rows)
+**Rows.** 6 rows.
 
 ### F-22  The v2 swap send path was unshippable: the client floor check disagreed with the server formula and cross-core routes were read as an outage
 
@@ -1122,7 +1121,7 @@ The floor is now one formula on both sides, derived from the returned `tol_pbps`
 
 Fixed. Deletion of the superseded v1 quote routes remains as ceremony step C-8.
 
-**Rows.** A-116, A-1119, A-1302, A-1406 (4 rows)
+**Rows.** 4 rows.
 
 ### F-23  A rebias left the next push unbanded, and the band anchor added to close that gap was itself conditional
 
@@ -1163,7 +1162,7 @@ The anchor carries its own observation timestamp and the band's elapsed-time ter
 
 Fixed, verified in the following round. One row, the slot-clock re-stamp on a market-closed slot, is Closed with a proof and no code change. The V5 mark seed registers a live lane, and the stale-scaffold risk that creates is tracked separately.
 
-**Rows.** A-006, A-010, A-013, A-035, A-038, A-040, A-049, A-050, A-053, A-059, A-065, A-076, A-082, A-224 (14 rows)
+**Rows.** 14 rows.
 
 ### F-24  Lane state was shared across a slot or optional on the wire where it had to be per-lane and mandatory
 
@@ -1205,7 +1204,7 @@ V5 gives every lane its own clock, pinned by a clock-isolation test, and mandate
 
 Fixed in V5. The deployed V4 retains the per-lane clock residual until the repoint. The threshold row is Accepted as residual informational: the base depeg halt is an owner risk decision, the staleness z-score is physics, and the remaining global confidence halt constant is accepted. The peg-leg confidence row is Closed and accepted with zero internal legs listed, to be reopened on the first internal listing. Verified 2026-09-14.
 
-**Rows.** A-022, A-074, A-180, A-203, A-225, A-678, A-786 (7 rows)
+**Rows.** 7 rows.
 
 ### F-25  A solvency pin asserted on the wrong path, and two test files were order-dependent or formatter-dirty
 
@@ -1221,7 +1220,7 @@ The pin for the third-party round-trip property asserted on `previewWithdraw`, t
 
 ```solidity
 // dex-evm/test/unit/PoolSolvency.t.sol:344
-  /// A-749. RESTATED PIN. The design's headline — "pool-level C closes econ-probe case 3" — is FALSE
+  /// RESTATED PIN. The design's headline — "pool-level C closes econ-probe case 3" — is FALSE
   /// as the original was written: `testFuzz_third_party_after_swap_roundtrip` asserted on
   /// `previewWithdraw`, the SAME-ASSET path, whose rate is `min(c_leg, C)`. Case 3's hub sits at
   /// c = 0.999973 with C > 1, so the minimum picks `c_leg`, the assertion returns the identical wei
@@ -1245,7 +1244,7 @@ The pin is restated against claim value, the sum of face times `C`, which is wha
 
 Fixed.
 
-**Rows.** A-091, A-157, A-749 (3 rows)
+**Rows.** 3 rows.
 
 ### F-26  The LP exit could settle below the minimum it displayed, and the pair-persist write was unguarded
 
@@ -1285,7 +1284,7 @@ A user could sign an exit that settles below the minimum the interface guarantee
 
 Closed. The LP floor change is signed off on the second revision, 2026-09-14; the storage guard landed 2026-09-15.
 
-**Rows.** A-244, A-937 (2 rows)
+**Rows.** 2 rows.
 
 ### F-27  The factory upgrade lane had no storage-version gate and no execute-time revalidation
 
@@ -1333,7 +1332,7 @@ Commits: [`f5c281f7`](https://github.com/btr-protocol/dex-evm/commit/f5c281f7cdc
 
 Fixed. Verified 2026-09-11; the advisory and informational rows were closed on the 2026-09-14 review.
 
-**Rows.** A-785, A-218, A-209, A-220, A-810, A-083, A-222, A-033 (8 rows)
+**Rows.** 8 rows.
 
 ### F-28  The published ABI surface was ambiguous and its generator gate was red
 
@@ -1368,7 +1367,7 @@ An off-chain decoder resolving an ambiguous event name picked one of two layouts
 
 Fixed. The interface-gap rows were closed as informational on 2026-09-10 under the minimum-severity bar.
 
-**Rows.** A-906, A-081, A-084, A-550, A-551, A-553, A-554, A-555 (8 rows)
+**Rows.** 8 rows.
 
 ### F-29  The documentation described retired levers and omitted shipped bounds and gates
 
@@ -1411,7 +1410,7 @@ Commits: [`c7df8ad`](https://github.com/btr-protocol/content/commit/c7df8ad2ab05
 
 Closed. Documentation sweeps landed 2026-09-15; the residual wording was verified on the 2026-09-14 review.
 
-**Rows.** A-118, A-121, A-133, A-148, A-210 (5 rows)
+**Rows.** 5 rows.
 
 ### F-30  The client authored its own swap floors and mis-allocated the server floor across split and chained parts
 
@@ -1452,7 +1451,7 @@ Commits: [`aa10f3b3`](https://github.com/btr-protocol/dex-evm/commit/aa10f3b3eca
 
 Closed. Landed 2026-09-15 and verified on the 2026-09-14 review.
 
-**Rows.** A-1404, A-1403, A-926, A-201 (4 rows)
+**Rows.** 4 rows.
 
 ### F-31  A server-authored output floor was accepted at any tolerance and was never bounded by the user's slippage
 
@@ -1496,7 +1495,7 @@ Commits: [`58eb51c`](https://github.com/btr-protocol/sdk/commit/58eb51cdeaf91691
 
 Fixed 2026-09-16. The approval reset row is Accepted: no listed token requires the zero-first pattern at the shipping configuration.
 
-**Rows.** A-1547, A-1548, A-1549 (3 rows)
+**Rows.** 3 rows.
 
 ### F-32  A queued absolute risk update silently overwrote a defensive tighten that landed during its delay
 
@@ -1537,7 +1536,7 @@ Commits: [`917040a4`](https://github.com/btr-protocol/dex-evm/commit/917040a416e
 
 Closed.
 
-**Rows.** A-1001, A-1137 (2 rows)
+**Rows.** 2 rows.
 
 ### F-33  A queued asset-parameter operation carried an absolute payload and no version tag, so execution undid an instant defensive tighten
 
@@ -1585,13 +1584,13 @@ Commits: [`06bdd179`](https://github.com/btr-protocol/dex-evm/commit/06bdd179148
 
 Fixed. Successive remediation rounds each re-verified in the following round; the final blob-compatibility arm was verified in round five against the round-one fix branch. One residual is recorded and accepted: the held-field guard also blocks the steward's tighten on that field for the delay plus the grace period.
 
-**Rows.** A-007, A-015, A-037, A-041, A-044, A-045, A-047, A-051, A-052, A-057, A-073, A-252 (12 rows)
+**Rows.** 12 rows.
 
 ### F-34  Instant risk-write lanes had no cumulative limit, no dispersion re-check, and resolved the native sentinel under a second key
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/src/Admin.sol:394`, `dex-evm/src/Admin.sol:571`, `dex-evm/src/libraries/PoolIOLib.sol:43` |
+| MEDIUM | Fixed; deployment pending | Audit | `dex-evm/src/Admin.sol:394`, `dex-evm/src/Admin.sol:571`, `dex-evm/src/libraries/PoolIOLib.sol:43` |
 
 **Severity rationale.** These are untimelocked writes on live legs; the worst realized case is a leg whose routes all revert, reachable in one transaction by a single key.
 
@@ -1624,9 +1623,9 @@ Commits: [`06bdd179`](https://github.com/btr-protocol/dex-evm/commit/06bdd179148
 
 #### Status
 
-Fixed, sentinel resolution verified 2026-09-11. One row in this group was refuted rather than fixed: the reported release-clock alias existed only on a parked per-pool-authority branch and never on the audited head, where halts are refcounted mask bits. One residual is open and latent: `Router.swap` is not payable while `Pool.swap` is, and the router's sentinel input path has no ERC-20 to pull; the router is not deployed and no native leg is live. A build-blocking row, where the contract tree depended on an unpushed shared commit, was closed once the shared repository was in sync with its main branch at [`eba0496`](https://github.com/btr-protocol/shared/commit/eba0496693bfc31dd3b2a1d8a3f21d5e872a8a1f). Two residual notes on the steward window did not survive refutation and are recorded as informational: a raise does not ratchet the window anchor, so a mid-window defensive raise is one-call reversible.
+Fixed; deployment pending. Sentinel resolution verified 2026-09-11. One row in this group was refuted rather than fixed: the reported release-clock alias existed only on a parked per-pool-authority branch and never on the audited head, where halts are refcounted mask bits. A build-blocking row, where the contract tree depended on an unpushed shared commit, was closed once the shared repository was in sync with its main branch at [`eba0496`](https://github.com/btr-protocol/shared/commit/eba0496693bfc31dd3b2a1d8a3f21d5e872a8a1f). Two residual notes on the steward window did not survive refutation and are recorded as informational: a raise does not ratchet the window anchor, so a mid-window defensive raise is one-call reversible.
 
-**Rows.** A-014, A-019, A-029, A-086, A-088, A-216, A-547, A-587 (8 rows)
+**Rows.** 8 rows.
 
 ### F-35  Oracle push semantics admitted an aliased replay and let a quarantined lane heal past its own band
 
@@ -1672,7 +1671,7 @@ Commits: [`230d0190`](https://github.com/btr-protocol/dex-evm/commit/230d0190f87
 
 Fixed, verified 2026-09-14 and 2026-09-15. One row is closed with no action: the bounded reentry nonce reverted at its 16-bit ceiling, which is moot now that the lever is deleted. The off-chain quote producer still emits the prior wire version; that cutover is tracked outside this scope and is not a contract change.
 
-**Rows.** A-262, A-652, A-1003, A-1007, A-1103, A-1127, A-1207, A-1308, A-1309, A-1316, A-1318, A-1402 (12 rows)
+**Rows.** 12 rows.
 
 ### F-36  Hook yield was booked at par while donations were booked at coverage, and the face conversion divided by zero
 
@@ -1709,7 +1708,7 @@ Commits: [`2e5e8363`](https://github.com/btr-protocol/dex-evm/commit/2e5e836318d
 
 Fixed 2026-09-15. The harvest degrade row is conditional on the solvency-degrade decision holding: if the degrade were reverted to a hard failure, harvest would re-block on a funded dead leg, which is an accepted fail-closed outcome with keeper retry.
 
-**Rows.** A-1004, A-1122, A-1123, A-1128 (4 rows)
+**Rows.** 4 rows.
 
 ### F-37  Hook cancel and write-down authority was protocol-scoped, so a foreign pool's hook slot was reachable from outside
 
@@ -1746,42 +1745,8 @@ Commits: [`e08f8f2e`](https://github.com/btr-protocol/dex-evm/commit/e08f8f2e136
 
 Fixed. Both rows closed in the same change.
 
-**Rows.** A-1009, A-1138 (2 rows)
+**Rows.** 2 rows.
 
-### F-38  Every live leg shipped with the outflow floor disarmed
-
-| Severity | Status | Class | Component |
-|---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/src/libraries/PoolIOLib.sol:147` |
-
-**Severity rationale.** With flash disabled and routes at depth one the setting is currently inert, but it is the only hard outflow floor in the protocol and it was zero on every listed leg.
-
-#### Description
-
-`minLiquidity` was zero on all 38 live legs, so the only hard outflow floor was disarmed fleet-wide. Coverage prices flow but never blocks it, which leaves `PoolIOLib.exec` with nothing to revert against.
-
-```solidity
-// dex-evm/src/libraries/PoolIOLib.sol:147
-      if (liq < a.minLiquidity) revert Err.ThresholdViolation(liq, a.minLiquidity);
-```
-
-The deploy manifest it came from was an Arc copy: minimum fee below two sigma, dead emitter paths, `kappa` absent from the fit artifact, and USD-quoted legs at a zero quote unit.
-
-#### Impact
-
-If flash were ever enabled, no hard floor would bound a drain on any leg. Today the exposure is bounded by flash being off and by single-hop routing.
-
-#### Remediation
-
-The deploy script carries a `minLiquidity` manifest column with flash disabled at genesis, at the owner-chosen 0.02 times initial liquidity per leg. The emitter was re-based with a `kappa` floor on every row, and the parameter fit that populates the manifest is a listing-ceremony step rather than a code change.
-
-Commits: [`e6e9bf4b`](https://github.com/btr-protocol/dex-evm/commit/e6e9bf4bbd54783ef3a5b6278323198d559b2237), [`bc1fac7`](https://github.com/btr-protocol/research/commit/bc1fac70363c274aa8ff93d4468622fd660872ee), [`ada46da`](https://github.com/btr-protocol/research/commit/ada46da8ccdba78e9b6cb81457aafa053977aa9e), [`ab939e8`](https://github.com/btr-protocol/research/commit/ab939e8ae0bb5fdb5a68c2930dfe9446778bf825), [`7f53d7d`](https://github.com/btr-protocol/research/commit/7f53d7db5268b145df93d5e280a0e955fcf2fa8c).
-
-#### Status
-
-Fixed 2026-09-15. Applying the fitted values to a chain is a listing-ceremony step.
-
-**Rows.** A-110 (1 row)
 
 ### F-39  The claim periphery accepted a malformed venue tree, and its first claim after funding hits the anti-JIT window by design
 
@@ -1828,7 +1793,7 @@ Commits: [`4c7fe903`](https://github.com/btr-protocol/dex-evm/commit/4c7fe903f2c
 
 Closed. The tree validation is fixed; the cooldown is closed as intended behaviour, re-verified 2026-09-14, because funding and claiming are never issued in one transaction.
 
-**Rows.** A-1015, A-1208 (2 rows)
+**Rows.** 2 rows.
 
 ### F-40  An issuer pause or blocklist on a listed token turns an LP cross exit into an unrefillable leg
 
@@ -1865,7 +1830,7 @@ The hub token is probed off chain through its `baseToken()` view and a revert, n
 
 Closed. Monitoring landed on the second remediation revision and the accepted residual was re-signed off on 2026-09-14.
 
-**Rows.** A-009 (1 row)
+**Rows.** 1 row.
 
 ### F-41  The interior displacement ceiling was a field-width artifact charged to every leg
 
@@ -1905,7 +1870,7 @@ Interior-capability scoping is in tree: `PoolConfig.dispersionCeiling` and `isIn
 
 Fixed for the scoping and the test suite. The saturation behaviour is accepted as designed and the residual re-pack is recorded as decided against, with one workplan entry noted as contradicting that decision.
 
-**Rows.** A-102, A-020, A-671, A-561 (4 rows)
+**Rows.** 4 rows.
 
 ### F-42  The Rust mirror and off-chain replicas drifted from the shipped Solidity pricing law
 
@@ -1945,7 +1910,7 @@ Commits: [`590b3e1`](https://github.com/btr-protocol/core/commit/590b3e12b77493c
 
 Fixed on 2026-09-11. Pinned by `pricing_parity.rs` and `PricingRounding.t.sol:30,:56,:67,:78`. The remaining informational items were closed in the 2026-09-10 review.
 
-**Rows.** A-901, A-130, A-137, A-138, A-239, A-523, A-518, A-617 (8 rows)
+**Rows.** 8 rows.
 
 ### F-43  The swap submit path re-anchored its floor and admitted a double submit
 
@@ -1994,7 +1959,7 @@ Commits: [`48587b54`](https://github.com/btr-protocol/front/commit/48587b54b2482
 
 Fixed on 2026-09-11, pinned by `swapTx.test.ts`. Informational rows closed on 2026-09-09 and 2026-09-10.
 
-**Rows.** A-243, A-568, A-800, A-653, A-626, A-627, A-808, A-770 (8 rows)
+**Rows.** 8 rows.
 
 ### F-44  The router library trusted backend-supplied pool addresses and mis-scaled chained floors
 
@@ -2040,7 +2005,7 @@ Commits: [`3a03ab7`](https://github.com/btr-protocol/sdk/commit/3a03ab78ad4bb3b9
 
 Fixed on 2026-09-10 and 2026-09-11. Pinned by `liability.test.ts:40` and `lpRoutes.test.ts:215`. The decimal-scale item was closed below the low-severity bar on 2026-09-10.
 
-**Rows.** A-508, A-169, A-614, A-919, A-675, A-618 (6 rows)
+**Rows.** 6 rows.
 
 ### F-45  Trading routes rendered before the access gate and continuous integration had not run since 09-14
 
@@ -2077,7 +2042,7 @@ Commits: [`fe4fdcc`](https://github.com/btr-protocol/front/commit/fe4fdcc56b4891
 
 Closed on 2026-09-16, with the candle eviction row accepted, no change required.
 
-**Rows.** A-1594, A-1595, A-1596, A-1597, A-1598 (5 rows)
+**Rows.** 5 rows.
 
 ### F-46  The wallet send lifecycle could report a broadcast transaction as cancelled
 
@@ -2124,7 +2089,7 @@ Commits: [`93383ae`](https://github.com/btr-protocol/front/commit/93383ae7d489d2
 
 Closed on 2026-09-16, with the gas-reserve row accepted, no change required.
 
-**Rows.** A-1590, A-1591, A-1592, A-1593 (4 rows)
+**Rows.** 4 rows.
 
 ### F-47  A pool with reserves and no liabilities returned a full coverage rate and handed the surplus to the next depositor
 
@@ -2163,7 +2128,7 @@ Commits: [`1a02316d`](https://github.com/btr-protocol/dex-evm/commit/1a02316dc78
 
 Closed. Pinned by `PoolSolvency.t.sol:569`.
 
-**Rows.** A-1304, A-1315 (2 rows)
+**Rows.** 2 rows.
 
 ### F-48  Deploy and operator scripts still targeted retired oracle surfaces and levers that no deployed contract exposes
 
@@ -2207,7 +2172,7 @@ The V1 oracle sources and the V1 ceremony surface were deleted and the listing s
 
 Fixed, verified 2026-09-10 and 2026-09-11 and at the rev2 chair review. Four informational rows were closed rather than fixed: the testnet faucet is testnet-only and is replaced by a pool-side deposit allowlist; the `FORCE_EXECUTE` dark-leg repoint is a deliberate opt-in lever, default off; the hardcoded 6 h delay in the `UpgradePoolImpl` log is correct on the chain it runs on; and the standing claim that no production file imported the V1 oracle was corrected in the record.
 
-**Rows.** A-032, A-079, A-100, A-156, A-192, A-227, A-228, A-233, A-247, A-260, A-604, A-801, A-803, A-804, A-806 (15 rows)
+**Rows.** 15 rows.
 
 ### F-49  Launch manifests shipped dispersion floors and feed-id bindings that did not match the signed feed set
 
@@ -2249,7 +2214,7 @@ Per-name dispersion floors were written on chain on 2026-09-04 and verified on a
 
 Fixed. Per-name equity floors were applied on chain 2026-09-04; the BNB bindings landed with the V5 genesis. The residual blanket `optional=true` on the push-side feed list and the stale "inert" wording in the BNB manifest are tracked as a separate open row. One duplicate informational row on the same equity floors was closed under the informational purge of 2026-09-09.
 
-**Rows.** A-099, A-727, A-904, A-905 (4 rows)
+**Rows.** 4 rows.
 
 ### F-50  The SDK build-time ABI integrity check was a tautology and fell back to stale artifacts
 
@@ -2290,7 +2255,7 @@ The ABI pin is now a content hash over normalised entries, recorded in `abis.loc
 
 Fixed, verified 2026-09-10 and 2026-09-11. Covered by `abi-pin.test.ts`.
 
-**Rows.** A-115, A-151, A-257, A-259, A-509 (5 rows)
+**Rows.** 5 rows.
 
 ### F-51  SDK transaction encoding and nonce allocation produced unsendable or permanently gapped transactions
 
@@ -2332,7 +2297,7 @@ The RLP encoder emits `0xc0` for an empty access list, with transaction vectors 
 
 Fixed, verified 2026-09-10 and 2026-09-11. Covered by `tx-vectors.test.ts:223` and `correctness.test.ts:319`. Four informational rows were closed under the purge of 2026-09-10 rather than fixed: undecoded revert data on the generic contract helpers, multicall split-batch tearing against a stale RPC, a float-based haircut preview that is display-only, and the absent `getCode` check on the canonical multicall address.
 
-**Rows.** A-636, A-637, A-639, A-640, A-642, A-643, A-644, A-683, A-690, A-925, A-943 (11 rows)
+**Rows.** 11 rows.
 
 ### F-52  The oracle page presented a governance push band as extractable value
 
@@ -2370,7 +2335,7 @@ The oracle page now distinguishes the governance push band from measured live de
 
 Fixed. The oracle page change is on the `audit/oev-live` branch and is not yet merged. Two informational rows were closed under the purge of 2026-09-10: stale marks are unfiltered in the portfolio revaluation path, which is display-only since the swap gate filters them, and the gate feed row drops a source timestamp that is currently redundant because the clocks are equal under V4.
 
-**Rows.** A-103, A-186, A-623, A-674 (4 rows)
+**Rows.** 4 rows.
 
 ### F-53  Natspec and comments overclaimed against the shipped constants and levers
 
@@ -2414,7 +2379,7 @@ The cap numbers were made symbolic or corrected to 10862 in both the contracts a
 
 Fixed and closed, verified at the rev2 signoff. One stale natspec residual left by the quarantine deletion is tracked as a separate row.
 
-**Rows.** A-127, A-1017, A-1309 (3 rows)
+**Rows.** 3 rows.
 
 ### F-54  The V5 sigma floor was one-way and was not applied on read, so releasing a dark lane left a permanent wide band
 
@@ -2455,7 +2420,7 @@ Any lane that had been released once accepted pushes inside a band an order of m
 
 Fixed 2026-09-16. The absence of a `ttlSecs` ceiling below the `uint16` maximum of 18.2 h on `registerFeed` and `requestFeedWiden` was accepted on 2026-09-16 with no code change. The `PoolIOLib` natspec residual is tracked in a separate open row.
 
-**Rows.** A-1517, A-1519 (2 rows)
+**Rows.** 2 rows.
 
 ### F-55  Published PoolFactory ABIs diverged from the contract, so consumers encoded selectors that do not exist
 
@@ -2497,7 +2462,7 @@ ABIs are now generated in `dex-evm` and consumed by path rather than hand-copied
 
 Fixed and closed.
 
-**Rows.** A-1131 (1 row)
+**Rows.** 1 row.
 
 ### F-56  Session grants, sequence numbers and signer-set changes did not bound what their documentation claimed
 
@@ -2533,7 +2498,7 @@ The session sequence gate is reworked so it no longer rejects honest same-second
 
 Fixed, verified in the following round. The documentation rows are verified 2026-09-11. The V5 signer-set changes retire the V4 residual at the repoint.
 
-**Rows.** A-021, A-028, A-034, A-036, A-039, A-042, A-043, A-046, A-058, A-249, A-775, A-812 (12 rows)
+**Rows.** 12 rows.
 
 ### F-57  Oracle natspec, interfaces and rollout notes drifted from the shipped code
 
@@ -2561,7 +2526,7 @@ The rollout note is corrected against the shipped functions, the packing natspec
 
 Fixed for the code and content rows. Three informational rows are Closed with no change, below the low-severity minimum bar, 2026-09-10.
 
-**Rows.** A-062, A-069, A-070, A-072, A-144, A-153, A-154, A-552, A-557, A-589 (10 rows)
+**Rows.** 10 rows.
 
 ### F-58  Deploy ceremonies signed unbound salts and zeroed risk parameters
 
@@ -2589,7 +2554,7 @@ The salt is bound in every live ceremony, with a role re-derivation in the oracl
 
 Closed on the second revision, signed off 2026-09-14; the preview fix landed 2026-09-15. The remaining ordered upgrade and re-seed is tracked as the next ceremony step. Two legacy scripts still inherit the no-op salt assertion; they are unreachable under the current deployment shape and are scheduled for deletion.
 
-**Rows.** A-190, A-606 (2 rows)
+**Rows.** 2 rows.
 
 ### F-59  An owner unhalt could relist a re-anchored leg without re-attestation
 
@@ -2617,7 +2582,7 @@ The collapse halt gets its own anchor-owned latch on chain, mirrored in the SDK 
 
 Closed, 2026-09-15.
 
-**Rows.** A-924 (1 row)
+**Rows.** 1 row.
 
 ### F-60  Router output floors were measured at the wrong place and quote views omitted execution guards
 
@@ -2649,7 +2614,7 @@ Commits: [`e36dbb86`](https://github.com/btr-protocol/dex-evm/commit/e36dbb86c4e
 
 Fixed for the router floor and the quote-view documentation, verified 2026-09-10. The informational rows were closed on 2026-09-09 and 2026-09-10 under the minimum-severity bar.
 
-**Rows.** A-613, A-686, A-619, A-719, A-720, A-687, A-661, A-773, A-778, A-200 (10 rows)
+**Rows.** 10 rows.
 
 ### F-61  A hook that refused recall could not be replaced, and a halted leg blocked the keeper's evacuation
 
@@ -2679,7 +2644,7 @@ Commits: [`42efec95`](https://github.com/btr-protocol/dex-evm/commit/42efec95888
 
 Closed, with one residual carried into the deployment plan as ceremony step C-9: the venue adapter's virtual-balance read exists only on the newer lending-pool revision, so the target chain's fork must be confirmed to expose it before the first hook install. Landed 2026-09-15.
 
-**Rows.** A-718, A-917, A-1114, A-1123 (4 rows)
+**Rows.** 4 rows.
 
 ### F-62  The guardian arming runbook named files and secrets that no longer exist
 
@@ -2707,7 +2672,7 @@ No code change. Arming at least two guardian Safes is deployment plan step C-4, 
 
 Closed 2026-09-15 into the deployment ceremony steps C-2, C-3 and C-4.
 
-**Rows.** A-248 (1 row)
+**Rows.** 1 row.
 
 ### F-63  Governance lever scope: a steward raise voided unrelated owner operations and a sentinel-pool guardian halt carried no release clock
 
@@ -2747,7 +2712,7 @@ Commits: [`41e10bc`](https://github.com/btr-protocol/dex-evm/commit/41e10bcbbc1a
 
 Fixed 2026-09-16 for the two code rows. Five rows are accepted with no code change, recorded 2026-09-16: the oracle beacon upgrade sits at the LISTING tier with a nominal validation and one owner key reaching both beacons; a foreign-pool seat can widen its own fences and write inside them in one transaction, which will be stated in the LP documentation; `revokeSigner` refuses to go below the signing threshold, so at exactly the threshold the leak response is a per-feed pause; the guardian can seal a sentinel pool mid-ceremony; and `_tier` has no `UPDATE_ASSET_PARAMS` arm, so a request with that operation type reverts.
 
-**Rows.** A-1510, A-1511, A-1512, A-1513, A-1514, A-1515, A-1516 (7 rows)
+**Rows.** 7 rows.
 
 ### F-64  Yield adapters trusted venue-reported amounts and left owner levers untimelocked
 
@@ -2786,7 +2751,7 @@ Commits: [`3565c671`](https://github.com/btr-protocol/dex-evm/commit/3565c671802
 
 Fixed, verified 2026-09-10 and 2026-09-11.
 
-**Rows.** A-147, A-511, A-513, A-514, A-724, A-798 (6 rows)
+**Rows.** 6 rows.
 
 ### F-65  Hook and periphery ledgers: force-clear ran inside flash context, rounding dust became a permanent index cut, and over-WAD claim weights stranded the last claimants
 
@@ -2814,7 +2779,7 @@ Commits: [`5188023`](https://github.com/btr-protocol/dex-evm/commit/51880239d7b7
 
 Fixed 2026-09-16.
 
-**Rows.** A-1528, A-1529, A-1530 (3 rows)
+**Rows.** 3 rows.
 
 ### F-66  A pool de-listing left no on-chain record
 
@@ -2842,7 +2807,7 @@ Commits: [`c692b601`](https://github.com/btr-protocol/dex-evm/commit/c692b601b9e
 
 Fixed.
 
-**Rows.** A-1013 (1 row)
+**Rows.** 1 row.
 
 ### F-67  Fee-free LP flows were a toll-free substitute for a swap, and the internal depeg breaker compared the wrong pair
 
@@ -2874,7 +2839,7 @@ Commits: [`e464872`](https://github.com/btr-protocol/dex-evm/commit/e464872820cd
 
 Closed 2026-09-16. Four rows fixed, three accepted as design positions with the reference-tier dependency alarmed off chain.
 
-**Rows.** A-1521, A-1522, A-1523, A-1524, A-1525, A-1526, A-1527 (7 rows)
+**Rows.** 7 rows.
 
 ### F-68  The off-chain quote mirror could not carry feed confidence and defaulted a missing coverage wall to zero
 
@@ -2904,7 +2869,7 @@ Commits: [`61c4063`](https://github.com/btr-protocol/sdk/commit/61c4063065df0a15
 
 Fixed on the second remediation revision; the write-only field was removed on 2026-09-11. The two informational rows were closed on 2026-09-09 and 2026-09-10 under the low-minimum bar.
 
-**Rows.** A-134, A-142, A-611, A-774, A-929 (5 rows)
+**Rows.** 5 rows.
 
 ### F-69  Chained two-hop router legs were not self-directed, and the chain-56 registry named the wrong native token
 
@@ -2934,7 +2899,7 @@ Commits: [`e454eeb`](https://github.com/btr-protocol/sdk/commit/e454eebc121ca65f
 
 Closed 2026-09-16.
 
-**Rows.** A-1550, A-1551, A-1552 (3 rows)
+**Rows.** 3 rows.
 
 ### F-70  Display surfaces overstated what the pool would actually quote or settle
 
@@ -2964,7 +2929,7 @@ Commits: [`c9b0b44a`](https://github.com/btr-protocol/front/commit/c9b0b44a45e0a
 
 Fixed for the chart honesty and gating rows, verified 2026-09-11; the self-pair defect is fixed on the safety and chart branch. The remaining rows were closed on 2026-09-10 as informational under the low-minimum bar.
 
-**Rows.** A-167, A-535, A-536, A-537, A-538, A-621, A-622, A-624, A-625, A-807 (10 rows)
+**Rows.** 10 rows.
 
 ### F-71  Client transaction plumbing did not rebuild after approvals, explain every revert, or survive blocked browser storage
 
@@ -2994,7 +2959,7 @@ Commits: [`48587b54`](https://github.com/btr-protocol/front/commit/48587b54b2482
 
 Fixed, verified 2026-09-11. The informational rows were closed on 2026-09-10 under the low-minimum bar, and the two consolidation rows were verified closed in code.
 
-**Rows.** A-135, A-141, A-573, A-574, A-575, A-590, A-591, A-654, A-698, A-699, A-702 (11 rows)
+**Rows.** 11 rows.
 
 ### F-72  Wallet transport stamped a stale chain identity and dropped failure detail from batches
 
@@ -3026,7 +2991,7 @@ Commits: [`55eaa59a`](https://github.com/btr-protocol/front/commit/55eaa59a4bd3a
 
 Fixed on 2026-09-11. The prompt-dwell gap is accepted and the display rows were closed below the low-severity bar on 2026-09-10.
 
-**Rows.** A-571, A-572, A-694, A-696, A-695, A-700, A-701, A-703 (8 rows)
+**Rows.** 8 rows.
 
 ### F-73  Coverage and upgrade-order test pins were absent, bare or vacuous
 
@@ -3056,7 +3021,7 @@ Commits: [`82e2b23c`](https://github.com/btr-protocol/dex-evm/commit/82e2b23c6f1
 
 Closed on 2026-09-15.
 
-**Rows.** A-609, A-940, A-1010 (3 rows)
+**Rows.** 3 rows.
 
 ### F-74  RPC endpoints were trusted without chain attestation and the ABI encoder accepted malformed input
 
@@ -3086,7 +3051,7 @@ Commits: [`f7bec7e`](https://github.com/btr-protocol/sdk/commit/f7bec7e5d038a22b
 
 Closed on 2026-09-15. Pinned by `abi.test.ts:315-322` and `abi.test.ts:325-329`.
 
-**Rows.** A-638, A-641 (2 rows)
+**Rows.** 2 rows.
 
 ### F-75  Shared access control let a live pending rotation be overwritten silently and let a compromised treasury owner veto its own eviction
 
@@ -3127,7 +3092,7 @@ A compromised treasury-owner key could block its own eviction forever, convertin
 
 Fixed, verified 2026-09-11. The veto cap reverses the balance in the other direction: a compromised owner can now evict an honest treasury owner after one veto. That residual was ratified as "incumbent once" in the governance timelock decision record and accepted, verified at the rev2 chair review. The dead `TREASURY` and `FACTORY` pointers, which have no on-chain readers, were closed as governance-ceremony hygiene under the purge of 2026-09-09.
 
-**Rows.** A-080, A-107, A-705, A-797, A-799, A-921 (6 rows)
+**Rows.** 6 rows.
 
 ### F-76  The SDK build pinned ABIs but fetched them from the live production API, and mirror constants drifted from chain
 
@@ -3161,7 +3126,7 @@ The pinned-ABI build no longer depends on live production state, the mirror cons
 
 Fixed 2026-09-16 and closed.
 
-**Rows.** A-1553, A-1554, A-1555 (3 rows)
+**Rows.** 3 rows.
 
 ### F-77  keccak256 panicked on inputs whose length was a non-zero multiple of the rate
 
@@ -3189,7 +3154,7 @@ Commits: [`8ef3ef6`](https://github.com/btr-protocol/core/commit/8ef3ef66b968cc4
 
 Fixed 2026-09-16.
 
-**Rows.** A-1556 (1 row)
+**Rows.** 1 row.
 
 ## 6. Reporting a finding
 
