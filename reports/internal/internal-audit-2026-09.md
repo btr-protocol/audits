@@ -16,7 +16,7 @@ mainnet deployment. This page publishes the whole campaign for the open-source c
 Previously published as `2026-09-16` under the title "Security review, September 2026"; that
 address redirects here.
 
-Findings are published under the [disclosure policy](/docs/3-7-bug-bounty): a finding appears
+Findings are published under the [disclosure policy](/docs/3-4-overview): a finding appears
 once its fix is deployed to every chain running the affected code. Nothing below has run on
 mainnet.
 
@@ -3161,5 +3161,5 @@ Fixed 2026-09-16.
 Findings against deployed contracts go to **security@btr.markets**. Please do not open a public
 issue for anything exploitable. We confirm receipt, say whether the finding is already in the
 private ledger, and tell you when the fix is deployed; once it is, the finding is published with
-attribution unless you ask otherwise. See [Bug Bounty](/docs/3-7-bug-bounty) for scope, rewards and
+attribution unless you ask otherwise. See [Bug Bounty](/docs/3-4-overview) for scope, rewards and
 safe harbour.
