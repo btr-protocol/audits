@@ -247,7 +247,7 @@ A stranger-created pool was a brick or, in the self-naming case, an official-bra
 
 #### Remediation
 
-`initialize` now pins `$.treasury` from `AccessControl.treasury()` and reverts on zero, and rejects `baseToken == 0`. The creator is recorded as `poolAdmin`, so a third-party pool is configurable by the party that deployed it. Official status is no longer derived from the creator: `_requireAuthoritySelfNamed` does not exist and only an owner-only `setOfficial` grants the brand, with `_assertOfficialShape` pinning the protocol treasury. `donate` shares `deposit`'s seal, allowlist and cap gates, the donate-back sentinel resolves through Admin, `protocolDeployer` and `setProtocolDeployer` are deleted, `receive()` is gated to `wnative` with a sweep arm, and one `Admin.bootstrapSealed` mapping is the single seal latch.
+`initialize` now pins `$.treasury` from `AccessControl.treasury()` and reverts on zero, and rejects `baseToken == 0`. The creator is recorded as `poolAdmin`, so a third-party pool is configurable by the party that deployed it. Official status is no longer derived from the creator: `_requireAuthoritySelfNamed` does not exist and only the owner's `requestOfficial` / `executeOfficial` lane grants the brand, with `_assertOfficialShape` pinning the protocol treasury. `donate` shares `deposit`'s seal, allowlist and cap gates, the donate-back sentinel resolves through Admin, `protocolDeployer` and `setProtocolDeployer` are deleted, `receive()` is gated to `wnative` with a sweep arm, and one `Admin.bootstrapSealed` mapping is the single seal latch.
 
 Commits: [`f5c281f7`](https://github.com/btr-protocol/dex-evm/commit/f5c281f7cdc161bb244d80d70e2cf3db1d64ccd7), [`e13745ae`](https://github.com/btr-protocol/dex-evm/commit/e13745ae095e491de72cc6a23a550e7cf5d44244).
 
@@ -1201,7 +1201,7 @@ A stale mark that the ttl never rejects is quoted at full confidence with no sta
 
 #### Remediation
 
-V5 gives every lane its own clock, pinned by a clock-isolation test, and mandates confidence and price entries in lockstep. `pauseFeed` is fail-closed on release. The named heal stall is fixed. The oracle half of the threshold row is closed by per-feed `sigmaFloor` and `maxDevBps` in V5.
+V5 gives every lane its own clock, pinned by a clock-isolation test, and mandates confidence and price entries in lockstep. `haltFeed` is fail-closed on release. The named heal stall is fixed. The oracle half of the threshold row is closed by per-feed `sigmaFloor` and `maxDevBps` in V5.
 
 [`df7a2c3`](https://github.com/btr-protocol/dex-evm/commit/df7a2c3583346b639ab84afb3e5b05719dbfb7be), [`1f38034`](https://github.com/btr-protocol/dex-evm/commit/1f38034510c68dcd827ab6ab2dbd4caad7263cb4)
 
@@ -1329,7 +1329,7 @@ Without the version gate an implementation with an incompatible storage layout c
 
 #### Remediation
 
-`Pool` exposes `storageVersion()`, `PoolFactory` pins a `STORAGE_VERSION` and applies a forward-only check at both request and execute, and execute re-pins the candidate against live wiring and the recorded layout. An `isSpawn` flag gates `registerTokens` and `setPoolBaseToken` and survives `deregisterPool`, so de-listing is no longer a write revocation. A guardian can call `setOfficial(false)` while `deregisterPool` stays owner-only. The forward-version gate plus the layout pins are the accepted control for the build-time-only layout check.
+`Pool` exposes `storageVersion()`, `PoolFactory` pins a `STORAGE_VERSION` and applies a forward-only check at both request and execute, and execute re-pins the candidate against live wiring and the recorded layout. An `isClone` flag gates `registerTokens` and `setPoolBaseToken` and survives `deregisterPool`, so de-listing is no longer a write revocation. A guardian can call `requestOfficial(pool, false)` while `deregisterPool` stays owner-only. The forward-version gate plus the layout pins are the accepted control for the build-time-only layout check.
 
 Commits: [`f5c281f7`](https://github.com/btr-protocol/dex-evm/commit/f5c281f7cdc161bb244d80d70e2cf3db1d64ccd7).
 
