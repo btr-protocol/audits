@@ -20,6 +20,12 @@ Findings are published under the [disclosure policy](/docs/3-4-overview): a find
 once its fix is deployed to every chain running the affected code. Nothing below has run on
 mainnet.
 
+Code is named as it stands today, not as it stood when a row was filed: the pricing and config
+libraries carry their `*Lib` names throughout, and the per-chain ceremony scripts quoted below
+(`Deploy.s.sol`, `PoolDeploy.s.sol`, the `Arc*` and `OracleV*Deploy` scripts) were consolidated
+after the campaign into `script/Protocol.s.sol`, `script/Pools.s.sol` and `script/Assets.s.sol`.
+Locations are given as file plus symbol; line numbers are omitted because they move.
+
 ## 1. Funnel
 
 Every row ever filed in the campaign, and what reached this page.
@@ -107,16 +113,16 @@ the anti-gaming register, is published at
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `dex-evm/src/oracles/ExternalOracleV4.sol:497`, `dex-evm/src/oracles/ExternalOracleV4.sol:842-857`, `dex-evm/src/oracles/ExternalOracleV4.sol:874-893` |
+| HIGH | Fixed | Audit | `ExternalOracleV4.sol`, `ExternalOracleV4.sol`, `ExternalOracleV4.sol` |
 
 **Severity rationale.** A single ordinary gap at live sigma and cadence could make a feed unusable for the life of the deployed, non-upgradeable oracle, which halts every pool leg quoting that asset.
 
 #### Description
 
-The V4 deviation band gates each incoming lane against the previously stored mark. When the move exceeded the band, the lane was skipped and the stored mark stayed where it was, so the next push was measured against the same stale mark and was refused for the same reason. The gap never shrank on its own. The wedge threshold in practice was far below the nominal ten times `maxDeviationBps` figure the design assumed, because the band is also a function of sigma and of the elapsed time since the last accepted observation.
+The V4 deviation band gates each incoming lane against the previously stored mark. When the move exceeded the band, the lane was skipped and the stored mark stayed where it was, so the next push was measured against the same stale mark and was refused for the same reason. The gap never shrank on its own. The wedge threshold in practice was far below the nominal ten times `maxDevBps` figure the design assumed, because the band is also a function of sigma and of the elapsed time since the last accepted observation.
 
 ```solidity
-// dex-evm/src/oracles/ExternalOracleV4.sol:497
+// ExternalOracleV4.sol
         if (pm != 0) {
           uint256 nm = _decode(nl, int8(uint8(cfg >> 16)));
           uint256 diff = nm > pm ? nm - pm : pm - nm;
@@ -129,7 +135,7 @@ The V4 deviation band gates each incoming lane against the previously stored mar
             }
 ```
 
-The first remediation added a governed widen lever, `requestFeedWiden` / `executeFeedWiden`, and that lever carried its own defects across several rounds: it could not release a wedge beyond the `MAX_DEV_THRESHOLD` ceiling of 2000 bps; it wrote an absolute band value over whatever a guardian had tightened in the meantime; it dropped the stale-payload snapshot guard its V1 twin carried; it refused to overwrite an expired pending operation; it cleared the lane and the band anchor without stamping the slot clock; and the event it emitted was not reachable by any consumer. The lever also sat at the BASE timelock tier, which is two days on mainnet, even though a pure release cannot set a price.
+The first remediation added a governed widen lever, `requestFeedWiden` / `executeFeedWiden`, and that lever carried its own defects across several rounds: it could not release a wedge beyond the `MAX_DEV_THRESHOLD_BPS` ceiling of 2000 bps; it wrote an absolute band value over whatever a guardian had tightened in the meantime; it dropped the stale-payload snapshot guard its V1 twin carried; it refused to overwrite an expired pending operation; it cleared the lane and the band anchor without stamping the slot clock; and the event it emitted was not reachable by any consumer. The lever also sat at the BASE timelock tier, which is two days on mainnet, even though a pure release cannot set a price.
 
 #### Impact
 
@@ -158,7 +164,7 @@ Fixed. The lever hardening is verified on the fix branch. The R7 self-heal is fi
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Closed | Audit | `dex-evm/src/oracles/ExternalOracleV5.sol:219-238`, `shared/evm/src/access/AccessControl.sol:535-545` |
+| HIGH | Closed | Audit | `ExternalOracleV5.sol`, `AccessControl.sol` |
 
 **Severity rationale.** An uninitialized or zero-threshold oracle accepted unsigned marks, and the same bootstrap path let an owner install a new treasury owner instantly, so both the price surface and the treasury role were reachable without the intended quorum.
 
@@ -167,7 +173,7 @@ Fixed. The lever hardening is verified on the fix branch. The R7 self-heal is fi
 `_quorumCheck` compared the recovered signature count `n` against the threshold `k` with `n < k`. At `k == 0` an empty signature set satisfies the comparison and the loop body never runs, so the check passes. Nothing forced `initialize` to run before `registerFeed` or `push`, so an oracle that had not been seeded, or one whose threshold was zero, accepted marks with no signatures at all.
 
 ```solidity
-// dex-evm/src/oracles/ExternalOracleV5.sol:225 (_quorumCheck)
+// ExternalOracleV5.sol (_quorumCheck)
     uint256 n = sigs.length / 65;
     if (sigs.length % 65 != 0 || n < k) revert Err.NotAuth();
     address prev;
@@ -210,7 +216,7 @@ Closed.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | QA | `dex-evm/src/Pool.sol:116-128`, `dex-evm/src/PoolFactory.sol:113`, `dex-evm/src/PoolFactory.sol:167-174` |
+| HIGH | Fixed | QA | `Pool.sol`, `PoolFactory.sol`, `PoolFactory.sol` |
 
 **Severity rationale.** The permissionless creation path was reachable by anyone at the shipping configuration and every pool it produced was either unusable or governed by the wrong key, so likelihood was certain and the impact reached protocol fee routing and pool control.
 
@@ -219,7 +225,7 @@ Closed.
 `createPool` was permissionless, but `Pool.initialize` wrote only `baseToken`, `wnative`, `flowCooldownSecs`, `factory` and `initialized` while still accepting `protoSharePct`. A pool created that way accrued a protocol share to an unset treasury address.
 
 ```solidity
-// dex-evm/src/Pool.sol:117
+// Pool.sol
   function initialize(address baseToken_, address wnative_, IPool.FeeParams calldata feeParams)
     external
   {
@@ -228,7 +234,7 @@ Closed.
     PoolConfig.setFeeParams($, feeParams);
     $.baseToken = baseToken_;
     $.wnative = wnative_;
-    $.flowCooldownSecs = C.DEFAULT_FLOW_COOLDOWN;
+    $.flowCooldownSecs = C.DEFAULT_FLOW_COOLDOWN_SECS;
     $.factory = msg.sender;
     $.initialized = true;
 ```
@@ -255,7 +261,7 @@ Fixed. Verified 2026-09-11; the residual informational rows were closed on the 2
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | QA | `dex-evm/src/Pool.sol:765-820`, `dex-evm/src/Pool.sol:709-753`, `dex-evm/src/Pool.sol:682-685` |
+| HIGH | Fixed | QA | `Pool.sol`, `Pool.sol`, `Pool.sol` |
 
 **Severity rationale.** `hookWriteDown` wrote the absorbing index state on the exact total-loss case that its own specification claimed to exclude, and the surrounding writers booked value on unproven balances, so a single venue loss could wipe a leg's claim permanently.
 
@@ -264,7 +270,7 @@ Fixed. Verified 2026-09-11; the residual informational rows were closed on the 2
 `hookWriteDown` applied its `minLiab` floor under `if (liabAfter > 0 && idx > 0)`. At the total-loss case `liabAfter` is zero, so the floor was skipped and the function wrote `newIdx = 0`, the absorbing state.
 
 ```solidity
-// dex-evm/src/Pool.sol:651
+// Pool.sol
     uint256 liabAfter = liabBefore - cutLiab;
     if (liabAfter > 0 && idx > 0) {
       uint256 minLiab = (liabBefore + idx - 1) / idx;
@@ -297,7 +303,7 @@ Fixed. Verified 2026-09-10 and 2026-09-11.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | QA | `dex-evm/script/OracleV5Deploy.s.sol:119`, `dex-evm/script/PoolDeploy.s.sol:223`, `dex-evm/script/ArcRiskRestore.s.sol` |
+| HIGH | Fixed | QA | `OracleV5Deploy.s.sol`, `PoolDeploy.s.sol`, `ArcRiskRestore.s.sol` |
 
 **Severity rationale.** The governance-delay omission ran against an immutable `AccessControl`, a beacon and a burned CREATE3 salt, so one mainnet run at the wrong schedule was unrecoverable.
 
@@ -306,7 +312,7 @@ Fixed. Verified 2026-09-10 and 2026-09-11.
 `OracleV5Deploy._deployTier` never called `_govDelays()`, so a `class=mainnet` run accepted the retired seven-tier schedule. The V4 script called it; the V5 branch dropped the call between the chain assertion and the first broadcast.
 
 ```solidity
-// dex-evm/script/OracleV5Deploy.s.sol:86
+// OracleV5Deploy.s.sol
   function _deployTier() internal returns (address ac, address oracle) {
     _assertChain();
     string memory outPath = _outPath();
@@ -342,7 +348,7 @@ Closed. Script fixes landed 2026-09-15; the deploy-record scaffold was verified 
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | QA | `dex-evm/src/oracles/ExternalOracleV5.sol:823-966`, `dex-evm/src/oracles/ExternalOracleV5.sol:758-772`, `dex-evm/test/unit/ExternalOracleV5.t.sol:333-340` |
+| HIGH | Fixed | QA | `ExternalOracleV5.sol`, `ExternalOracleV5.sol`, `ExternalOracleV5.t.sol` |
 
 **Severity rationale.** An untested governance lifecycle on an immutable oracle plus a revoke path that can raise the threshold above the signer count makes a permanent, unrecoverable authorization brick reachable through a routine key rotation.
 
@@ -353,7 +359,7 @@ Every V5 signer and reference-signer governance function other than `revokeSigne
 `_revoke` removed the signer from the set and the enumeration list and never lowered the threshold, so revoking from a k-of-k set left `threshold > signerCount` and every quorum check reverted `NotAuth` forever. The existing `test_revoke_and_enumerate` asserted the shrink green with no quorum floor.
 
 ```solidity
-// dex-evm/src/oracles/ExternalOracleV5.sol:757
+// ExternalOracleV5.sol
   function _revoke(mapping(address => bool) storage set, address[] storage list, address a, bool ref)
     private
   {
@@ -389,7 +395,7 @@ Closed.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | QA | `dex-evm/src/oracles/OracleBeacon.sol:39`, `dex-evm/src/Admin.sol:246-284`, `shared/evm/src/Constants.sol:28-53` |
+| HIGH | Fixed | QA | `OracleBeacon.sol`, `Admin.sol`, `ConstantsLib.sol` |
 
 **Severity rationale.** The delay a beacon reads at construction is immutable for the life of that beacon, so shipping it before the mechanism was ratified would have frozen the wrong upgrade lane into the deployment.
 
@@ -398,7 +404,7 @@ Closed.
 The release tip carried a paused three-tier governance-delay ladder together with a V5 beacon whose constructor pinned the upgrade delay to the `GOVERNANCE` tier, while the mechanism decision itself was still open. `DELAY_UPGRADE` is set once in the constructor.
 
 ```solidity
-// dex-evm/src/oracles/OracleBeacon.sol:34
+// OracleBeacon.sol
   constructor(address ac_, address impl_) {
     if (ac_ == address(0) || impl_ == address(0)) revert Err.ZeroAddr();
     if (ac_.code.length == 0 || impl_.code.length == 0) revert Err.NotCode();
@@ -428,7 +434,7 @@ Closed. Ratified 2026-09-14, verified on the same review.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `dex-evm/src/Admin.sol:309`, `dex-evm/src/Admin.sol:467`, `dex-evm/src/libraries/PoolConfig.sol:282-286` |
+| HIGH | Fixed | Audit | `Admin.sol`, `Admin.sol`, `PoolConfigLib.sol` |
 
 **Severity rationale.** A single guardian key could, without a timelock and without cooperation from the pool that owns the assets, put a foreign pool's leg into a state that only a CRITICAL-tier operation could restore, and then veto every restore attempt.
 
@@ -437,7 +443,7 @@ Closed. Ratified 2026-09-14, verified on the same review.
 `Admin` exposes several levers whose authority check was protocol-scoped rather than pool-scoped. `collapseAnchor` was reachable by the protocol guardian on any pool, including pools with their own `poolAdmin`, and its mandatory companion halt makes the leg's mark meaningless until an anchor is re-established. The only un-collapse path is `executeAnchorUpdate` at CRITICAL tier, and `cancelTimelock` took the same guardian-or-admin check and deletes a pending operation in both directions, so the same principal could cancel every re-request. Re-request is permitted, so the loop was unbounded.
 
 ```solidity
-// dex-evm/src/Admin.sol:309
+// Admin.sol
   function cancelTimelock(address pool, uint8 opType, bytes32 subject) external {
     _onlyGuardianOrAdmin();
     bytes32 key = _keyOf(pool, opType, subject);
@@ -447,13 +453,13 @@ Closed. Ratified 2026-09-14, verified on the same review.
     emit TimelockCancelled(pool, key, opType);
   }
 
-// dex-evm/src/Admin.sol:467
+// Admin.sol
   function collapseAnchor(address pool, address token, address newAnchor) external {
     _onlyGuardianOrAdmin();
     IPool(pool).adminCollapseAnchor(token, newAnchor);
 ```
 
-A second defect sat on the release side. `unhaltAsset` took a caller-supplied `src` mask and `PoolConfig.setHalt` cleared whatever bits the mask named with no record of which principal set them, so a foreign pool admin calling `unhaltAsset(pool, token, HALT_MASK)` cleared the guardian's halt alongside their own. On a pool with a non-zero `poolAdmin`, `collapseAnchor` (guardian-or-pool-admin) and `unhaltAsset` (pool-admin) were reachable by one principal, which is the collapse-then-unhalt rug against that pool's own LPs. Separately, the guardian held an un-halt edge on foreign pools at all, contradicting the documented HALT / TIGHTEN / CANCEL one-direction invariant in `shared/evm/src/AccessControl.sol`.
+A second defect sat on the release side. `unhaltAsset` took a caller-supplied `src` mask and `PoolConfigLib.setHalt` cleared whatever bits the mask named with no record of which principal set them, so a foreign pool admin calling `unhaltAsset(pool, token, HALT_MASK)` cleared the guardian's halt alongside their own. On a pool with a non-zero `poolAdmin`, `collapseAnchor` (guardian-or-pool-admin) and `unhaltAsset` (pool-admin) were reachable by one principal, which is the collapse-then-unhalt rug against that pool's own LPs. Separately, the guardian held an un-halt edge on foreign pools at all, contradicting the documented HALT / TIGHTEN / CANCEL one-direction invariant in `AccessControl.sol`.
 
 `setRiskFences` was opt-in with no opt-out: it reverted on `maxDeltaBps == 0` and no clearing function existed, so once a foreign pool admin armed fences on a leg, the protocol risk steward held permanent write access to that leg's `minLiquidity`, `minFee`, `vega` and `haircut`. The bootstrap instant listing lanes also never expired and the guardian could not seal them.
 
@@ -485,7 +491,7 @@ Fixed. Foreign-pool cancel and collapse verified 2026-09-10; guardian seal verif
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `core/src/route.rs:629`, `core/src/pricing.rs:176-206`, `dex-evm/src/libraries/Pricing.sol:562-579` |
+| HIGH | Fixed | Audit | `route.rs`, `pricing.rs`, `PricingLib.sol` |
 
 **Severity rationale.** The mirror is the quote surface's reference implementation, and a mixed-decimal sell produced a settled amount wrong by the decimal shift between the two legs on every route through a hub whose book is held in a different scale.
 
@@ -494,7 +500,7 @@ Fixed. Foreign-pool cancel and collapse verified 2026-09-10; guardian seal verif
 `core` quotes a leg in the spoke's scale and then settles against the hub book. For a sell the gross quantity was passed to `Endpoint::settle` without being re-denominated into the hub's raw units, while the Solidity path applies `_legScaleOut` before `_settleQuote`. The test fixture that would have caught it carried a hub with zero liabilities, which turns the coverage wall off, so the parity wall was effectively disabled on exactly the path that diverged.
 
 ```rust
-// core/src/route.rs:629
+// route.rs
         // Both quantities leave the pricer in the SPOKE's scale; a sell then shifts to the base's.
         let (net, gross) = if selling {
             (
@@ -514,7 +520,7 @@ A sell through a hub whose book is in a different decimal scale settled against 
 
 #### Remediation
 
-`Pricing::walk` and `Quote::settled` were split, and a sell's gross is rescaled into the hub's raw units before `Endpoint::settle`, mirroring `_legScaleOut`. The hub fixture carries liabilities and `kappa = 600` again, so the coverage wall is on in the parity tests, and directed sell, buy and round-trip vectors were added. The `kappa == 0` short-circuits were dropped so the Rust arm follows the same branch as `Pricing.sol`. Vega is documented once as PBPS-scaled across contract, SDK, core and the public parameter docs; the owner decision is to keep one percent of sigma on the PBPS scale for the phase-one stable set and to rescale only alongside the volatile-core fit, so there is no pricing change. Research constants are pinned to `Pricing.sol` and the parity gate re-points at the sibling checkout.
+`Pricing::walk` and `Quote::settled` were split, and a sell's gross is rescaled into the hub's raw units before `Endpoint::settle`, mirroring `_legScaleOut`. The hub fixture carries liabilities and `kappa = 600` again, so the coverage wall is on in the parity tests, and directed sell, buy and round-trip vectors were added. The `kappa == 0` short-circuits were dropped so the Rust arm follows the same branch as `PricingLib.sol`. Vega is documented once as PBPS-scaled across contract, SDK, core and the public parameter docs; the owner decision is to keep one percent of sigma on the PBPS scale for the phase-one stable set and to rescale only alongside the volatile-core fit, so there is no pricing change. Research constants are pinned to `PricingLib.sol` and the parity gate re-points at the sibling checkout.
 
 Commits: [`6440d93`](https://github.com/btr-protocol/core/commit/6440d9328e91d8b5de7e2e2b9509ed75a6da12fd), [`4485e8d`](https://github.com/btr-protocol/core/commit/4485e8d6bbd5d2e0fd65a10cce7aae28d798805e), [`b75f647`](https://github.com/btr-protocol/core/commit/b75f647bab065132601999ee1826475731ec607a), [`3f71c59`](https://github.com/btr-protocol/core/commit/3f71c59e11597955356d38214cc5042d38f6768c), [`35c8e7ad`](https://github.com/btr-protocol/core/commit/35c8e7adf7dd6e537131f62353039ac56d7b3160), [`0d1990f`](https://github.com/btr-protocol/core/commit/0d1990f7dd1bb3dbddfa93b72394433f2dedd187), [`83d87923`](https://github.com/btr-protocol/dex-evm/commit/83d87923904b563c12de51969a52b38a4d138110), [`8c21532`](https://github.com/btr-protocol/sdk/commit/8c2153214febdf4f0e97b538caced9b9dd528c03), [`fac1138`](https://github.com/btr-protocol/sdk/commit/fac1138679e9607785dd4bfd321251dce526758c), [`524cec4`](https://github.com/btr-protocol/research/commit/524cec400334ed799cf7b73bd596feb832086db5), [`52f999f`](https://github.com/btr-protocol/research/commit/52f999fcbb2e06009847d16aee51d3ffa6eeb326), [`e16806e`](https://github.com/btr-protocol/content/commit/e16806edebb6a3975ebf20c68ac90bd3bab1bc7b).
 
@@ -528,7 +534,7 @@ Fixed, verified 2026-09-14. The `kappa == 0` parity row was conditional on the m
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `front/src/components/features/swap/SwapForm.tsx:1121`, `front/src/config/testnet-tokens.ts:205`, `front/scripts/lib/livePools.ts:168` |
+| HIGH | Fixed | Audit | `SwapForm.tsx`, `testnet-tokens.ts`, `livePools.ts` |
 
 **Severity rationale.** Both defects produce a correctly signed transaction carrying the wrong amount, and the decimal one is off by a factor of 1e12 on a chain where the affected token is a primary leg.
 
@@ -537,7 +543,7 @@ Fixed, verified 2026-09-14. The `kappa == 0` parity row was conditional on the m
 On the market-first LP deposit route, leg zero was given the full typed input amount while later legs were sized from float values carried on the route steps rather than from the previous leg's floored output. The multi-leg deposit therefore did not compose: the first hop spent the whole budget and the later hops were sized from numbers that had already lost precision.
 
 ```ts
-// front/src/components/features/swap/SwapForm.tsx:1121
+// SwapForm.tsx
             .map((st, i) => ({
               pool: (st.poolAddr ?? poolAddr) as Address,
               tokenIn: tokenAddr(st.tokenIn),
@@ -573,7 +579,7 @@ Fixed 2026-09-16.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `front/src/hooks/useAllPools.ts:92`, `front/src/hooks/usePoolData.ts:87`, `front/src/config/aimm-profiles.ts:69` |
+| HIGH | Fixed | Audit | `useAllPools.ts`, `usePoolData.ts`, `aimm-profiles.ts` |
 
 **Severity rationale.** The front end quotes off an in-browser replica of the on-chain pricing law, so any divergence between the replica's parameters and the chain's is either a systematically wrong price shown to every user or a fleet-wide loss of quoting, both reachable with no attacker and no special state.
 
@@ -582,7 +588,7 @@ Fixed 2026-09-16.
 The pool state builder defaulted `kappaCovBps` to `0` whenever the parameter was absent from the multicall result. Zero is the value that disables the coverage wall, so the replica quoted a zero coverage toll on legs where the chain was charging 600 to 2500 basis points. The default was fail-open in the one direction that matters: the client understated the cost of the trade it was about to send.
 
 ```ts
-// front/src/hooks/useAllPools.ts:92
+// useAllPools.ts
       const hub: PoolState['hub'] = baseRow
         ? {
             res: baseRow.amount,
@@ -617,7 +623,7 @@ Fixed. The fail-open default and the profile drift were closed on 2026-09-10 and
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `front/src/pages/safety/SafetyLevers.tsx:107`, `front/src/pages/SafetyPage.tsx:567`, `front/src/pages/safety/safetyModel.tsx:300` |
+| HIGH | Fixed | Audit | `SafetyLevers.tsx`, `SafetyPage.tsx`, `safetyModel.tsx` |
 
 **Severity rationale.** The emergency console is the operational path to the fail-closed levers; an empty feed selector removes the intended way to use them at exactly the moment they are needed, and the workaround is a hand-built raw transaction.
 
@@ -626,7 +632,7 @@ Fixed. The fail-open default and the profile drift were closed on 2026-09-10 and
 The console resolved the oracle ABI by name and was served the V1 interface for a V4 address. `getFeedIds()` does not exist on any oracle generation and reverts on V4, so the "Pause feed" selector enumerated nothing and the guardian's own emergency lever could not be driven from the emergency UI. During a live incident the affected feed had to be paused by a raw contract call instead.
 
 ```ts
-// front/src/pages/safety/SafetyLevers.tsx:107
+// SafetyLevers.tsx
   // the roster is a BUILD-TIME fact (SDK lane map x venue feedIds), never an on-chain
   // enumeration - no oracle generation exposes `getFeedIds()`, and asking a V4 for it reverts, which
   // is what left this selector (the emergency pause lever) permanently empty. `laneFeedMeta` is the
@@ -658,7 +664,7 @@ Fixed. Verified by the 2026-09-11 validation pass. The copy, veto-card and confi
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `dex-evm/src/libraries/PoolLiquidity.sol:404`, `dex-evm/src/libraries/PoolLiquidity.sol:326-333`, `dex-evm/src/libraries/PoolIOLib.sol:159-190` |
+| HIGH | Fixed | Audit | `PoolLiquidityLib.sol`, `PoolLiquidityLib.sol`, `PoolIOLib.sol` |
 
 **Severity rationale.** Under-covered pools are the state in which the haircut exists at all, and the escape was measured at the live coverage setting on both LP cross paths, so an ordinary LP could extract value from the remaining LPs with no privileged access.
 
@@ -667,7 +673,7 @@ Fixed. Verified by the 2026-09-11 validation pass. The copy, veto-card and confi
 The pool applies a haircut when coverage is below par. The settlement arithmetic on the cross-asset LP paths took the source leg's own coverage rather than the pool-level rate, so an exit split into slices converged on a better rate than a single exit of the same size. Measured at the live setting the escape was +61.6% on both LP cross paths.
 
 ```solidity
-// dex-evm/src/libraries/PoolLiquidity.sol:404
+// PoolLiquidityLib.sol
     IPool.Asset storage assetFrom = $.assets[ctx.fromTk];
     // withdrawValue ≤ liabilities is enforced at the quote (no clamp): the full face is always burned.
     if (ctx.fromTk == ctx.toTk) {
@@ -682,7 +688,7 @@ The pool applies a haircut when coverage is below par. The settlement arithmetic
     }
 ```
 
-Three further defects sat on the same ledger. The mark cap that keeps an LP conversion at or below the fair oracle rate was applied at the cross-withdraw and liability-swap entrypoints only, not inside the swap pricing core, so a same-asset withdraw followed by a swap reproduced the same end state with the cap absent. That path was reproduced 25 out of 25 runs at the live preset and widened with volatility, from +9 basis points at zero sigma to +177 basis points at 5% sigma. The cap also capped the output while keeping the pre-cap fee, overcharging at dust scale. And `donate` booked its face at par where the specification requires face scaled by the pool coverage rate, moving surplus from every other leg's LPs to the donor leg.
+Three further defects sat on the same ledger. The mark cap that keeps an LP conversion at or below the fair oracle rate was applied at the cross-withdraw and liability-swap entrypoints only, not inside the swap pricing core, so a same-asset withdraw followed by a swap reproduced the same end state with the cap absent. That path was reproduced 25 out of 25 runs at the live curve and widened with volatility, from +9 basis points at zero sigma to +177 basis points at 5% sigma. The cap also capped the output while keeping the pre-cap fee, overcharging at dust scale. And `donate` booked its face at par where the specification requires face scaled by the pool coverage rate, moving surplus from every other leg's LPs to the donor leg.
 
 Structural observations were recorded rather than fixed. Reference bands are enforced per node, so on a spoke-hub-spoke cross both guarded nodes can sit at the same edge of their own band and the worst-case composed error is about twice the band. No independent reference exists for a composed cross rate, so per-node guarding is the strongest available control. The remaining rows on this surface are display and documentation gaps below the reporting bar: `previewWithdraw` ignoring the halt and liquidity floor, a natspec claim that fee accrual never reverts, an incomplete file-header event list, a dust-scale fee skip, and a transient-cache hit that skips a re-gate on a path with no reachable oracle write.
 
@@ -694,7 +700,7 @@ An LP in an under-covered pool could recover more than the haircut allowed by sl
 
 1. The pool sits under-covered, so exits are haircut.
 2. An LP splits a withdrawal into slices rather than exiting once, and each slice settles at the source leg's coverage instead of the pool rate.
-3. Alternatively the LP performs a same-asset withdraw, which is exactly coverage-preserving and reads no oracle, and then sells the withdrawn asset back through `Pricing.swap`, which prices at the skew-anchored mid with no mark cap.
+3. Alternatively the LP performs a same-asset withdraw, which is exactly coverage-preserving and reads no oracle, and then sells the withdrawn asset back through `PricingLib.swap`, which prices at the skew-anchored mid with no mark cap.
 4. Either route lands the same end state as the capped cross exit at a better rate, bounded by the actor's own position and requiring an under-covered source leg.
 
 #### Remediation
@@ -713,7 +719,7 @@ Fixed, verified 2026-09-10 and 2026-09-11. The per-node reference-band bound is 
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `dex-evm/src/Pool.sol:152`, `dex-evm/src/PoolFactory.sol:300-307`, `dex-evm/src/Admin.sol:155` |
+| HIGH | Fixed | Audit | `Pool.sol`, `PoolFactory.sol`, `Admin.sol` |
 
 **Severity rationale.** The clone answered the real access-control, admin and flash singletons, inherited beacon upgrades and emitted the protocol's full event stream while remaining invisible to the official pool registry, so a third party could present a pool they governed as one of ours.
 
@@ -724,7 +730,7 @@ Fixed, verified 2026-09-10 and 2026-09-11. The per-node reference-band bound is 
 The first fix bound initialization to the beacon by comparing `msg.sender` to the beacon slot. That bind is circular: the attacker supplies their own beacon, which returns the real implementation, and the check passes.
 
 ```solidity
-// dex-evm/src/Pool.sol:152
+// Pool.sol
     if ($.initialized) revert Err.InvalidState();
     address beacon;
     assembly ("memory-safe") {
@@ -763,7 +769,7 @@ Fixed. The authority anchor and the clone reopen are closed by the same commit a
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `dex-evm/src/libraries/PoolLiquidity.sol:546`, `sdk/src/pool/liability.ts:160` |
+| HIGH | Fixed | Audit | `PoolLiquidityLib.sol`, `sdk/src/pool/liability.ts` |
 
 **Severity rationale.** The over-mint is deterministic on every call whenever pool coverage exceeds par, and the path was armed at genesis, so it dilutes existing claim holders with no attacker and no unusual state.
 
@@ -772,10 +778,10 @@ Fixed. The authority anchor and the clone reopen are closed by the same commit a
 `swapLiability` converts a claim on one leg into a claim on another. It scaled the incoming face by the pool coverage rate to obtain the fair input, then settled the outgoing claim at that rate a second time and credited the result as face. For a coverage rate above par the outgoing claim was over-minted by one factor of the rate, while the natspec stated the operation was coverage-neutral.
 
 ```solidity
-// dex-evm/src/libraries/PoolLiquidity.sol:546
+// PoolLiquidityLib.sol
     // Re-denomination is a CROSS EXIT that stops short of paying out, so it settles on the same
-    // rate: face in, face out, both at C. It is C-NEUTRAL by construction — no reserves move and the
-    // spread makes B fall — so it can only raise the rate for everyone left.
+    // rate: face in, face out, both at C. It is C-NEUTRAL by construction - no reserves move and the
+    // spread makes B fall - so it can only raise the rate for everyone left.
     uint256 fairIn = (liabIn * PoolSolvency.mintRate($)) / SC.WAD;
     IPool.SwapQuote memory q = Pricing.anchorPathQuoteLp($, inTk, outTk, fairIn);
     uint256 markCap = _markCap($, inTk, outTk, fairIn, q.markPrice);
@@ -804,7 +810,7 @@ Closed.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `front/src/hooks/useSafetyControl.ts:135`, `front/src/components/features/admin/useSafetyHistory.ts:249`, `front/src/components/features/oracle/oracle.tsx:244` |
+| HIGH | Fixed | Audit | `useSafetyControl.ts`, `useSafetyHistory.ts`, `oracle.tsx` |
 
 **Severity rationale.** A partial multicall failure silently shrank the safety roster rather than reporting it, so the operator could act on a console that looked complete and was not.
 
@@ -813,7 +819,7 @@ Closed.
 The safety console builds its roster from a multicall fan-out. Sub-read results were filtered for truthiness, so a failed or stale sub-read was indistinguishable from a pool that does not exist: it vanished from the roster, and downstream state fell back to permissive defaults rather than blocking the action.
 
 ```ts
-// front/src/hooks/useSafetyControl.ts:135
+// useSafetyControl.ts
   const { data: poolRes, loading: poolsLoading } = useReadContracts({
     contracts: poolCalls,
     chainId,
@@ -847,7 +853,7 @@ Fixed 2026-09-16.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `dex-evm/src/libraries/Pricing.sol:919-937`, `dex-evm/src/libraries/Pricing.sol:1001`, `core/src/pricing.rs:497-501` |
+| HIGH | Fixed | Audit | `PricingLib.sol`, `PricingLib.sol`, `pricing.rs` |
 
 **Severity rationale.** Reachable by any taker on a live leg with no privilege and no setup, but the loss is taker-only, pool-favourable and requires the victim to sign the oversized order, which caps it below critical.
 
@@ -858,7 +864,7 @@ The coverage wall charges a toll on the output leg that grows with the fraction 
 Chain measurement on the live testnet fleet showed USDC.b to USDT returning 49,266 for a $56.5k input and 45,269 for a $58.5k input, and XAUT peaking at 11.7428 for a $65k input and returning 0 at $80k.
 
 ```rust
-// core/src/pricing.rs:490-501
+// pricing.rs
         } else {
             // base→token (buy): size the child-token volume off the mid, then traverse.
             let est_out = amount_in.mul_div(WAD, mid).expect("estOut in range");
@@ -866,7 +872,7 @@ Chain measurement on the live testnet fleet showed USDC.b to USDT returning 49,2
             amount_in.mul_div(WAD, exec).expect("buy grossOut in range")
         };
 
-        // `Pricing._settleQuote` (Pricing.sol:521): `quote.covToll = _covToll(cOut, …)` — selling
+        // `PricingLib._settleQuote` (PricingLib.sol): `quote.covToll = _covToll(cOut, …)` - selling
         // delivers the counterparty, buying delivers this leg.
         let out = self.settle_out(reserves, liabilities, counterparty, selling);
         let cov = out.toll(gross_out);
@@ -876,7 +882,7 @@ Chain measurement on the live testnet fleet showed USDC.b to USDT returning 49,2
 Two further properties of the same toll were examined in the same pass. First, the recovery ratio of the coverage toll is `rho(c) = c(-ln c - 1 + c) / (1 - c)^2`, which is independent of `kappaCovBps` and tends to 0.5 as coverage approaches the peg: the toll can never recover more than half of the loss-versus-rebalancing it prices, at any kappa. Second, the hub leg carried `kappaCovBps = 300` while the spoke ladder ran 400 and 600, so every spoke down-move drained the weaker wall first. The over-peg region is deliberately toll-free through the `min(c, 1)` clamp, and the toll, skew and haircut accrue as unclaimable reserve surplus rather than as a claimable index rise.
 
 ```solidity
-// dex-evm/src/libraries/Pricing.sol:1122-1136
+// PricingLib.sol
   function _covToll(EndpointCache memory cOut, uint256 grossOut) internal pure returns (uint256) {
     if (cOut.liabilities == 0 || grossOut == 0) return 0;
     uint256 r0 = uint256(cOut.reserves);
@@ -910,28 +916,27 @@ Fixed, with the recovery bound accepted as designed on 2026-09-11 and the inform
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `dex-evm/src/libraries/PoolConfig.sol:650-673`, `dex-evm/src/libraries/PoolConfig.sol:93-105`, `shared/evm/src/Constants.sol:60` |
+| HIGH | Fixed | Audit | `PoolConfigLib.sol`, `PoolConfigLib.sol`, `ConstantsLib.sol` |
 
 **Severity rationale.** The reported perpetual admin option would have been unconditional and would have won the correction race, but the staged-admin path turned out not to exist in code, so no live configuration surface carried it.
 
 #### Description
 
-The pool administration handover was reported as holding a `pendingPoolAdmin` slot with no un-stage call and no expiry, which would give a staged recipient a perpetual unconditional option and let them win the seven-day correction race, contradicting the natspec at `Admin.sol:961-966`. Re-examination showed `pendingPoolAdmin` exists only as two reserved storage words in `IPool.sol:252-259` and is not wired to any code path.
+The pool administration handover was reported as holding a `pendingPoolAdmin` slot with no un-stage call and no expiry, which would give a staged recipient a perpetual unconditional option and let them win the seven-day correction race, contradicting the natspec at `Admin.sol`. Re-examination showed `pendingPoolAdmin` exists only as two reserved storage words in `IPool.sol` and is not wired to any code path.
 
-The surrounding configuration surface carried real defects. `kappaCovBps` had no upper bound in any writer while the mainnet set raised it four to eight times, putting a fat-finger inside reach. `deregisterPool` deleted `poolToTokens` without repopulating it, so `setBaseToken`'s completeness scan read an empty roster and failed open, and `isInteriorCapable` returned false for every leg, silently handing out `MAX_DISPERSION_PBPS` instead of the interior dispersion cap. `setAssetHook` never checked `hook.token() == t`, so a sentinel-constructed hook could block recall and deadlock a leg with non-zero inventory. `collapseAnchor` never wrapped `newAnchor`, so a guardian alias mistake reverted with `InvalidAnchor` and the halt never landed. On the constants side, the production LOW timelock tier was cut from one day to one hour during the delta with `ADD_ASSET` riding it, and the `MIN_ARMED_DELAY` natspec still described the old one-day floor.
+The surrounding configuration surface carried real defects. `kappaCovBps` had no upper bound in any writer while the mainnet set raised it four to eight times, putting a fat-finger inside reach. `deregisterPool` deleted `poolToTokens` without repopulating it, so `setBaseToken`'s completeness scan read an empty roster and failed open, and `isInteriorCapable` returned false for every leg, silently handing out `MAX_DISPERSION_PBPS` instead of the interior dispersion cap. `setAssetHook` never checked `hook.token() == t`, so a sentinel-constructed hook could block recall and deadlock a leg with non-zero inventory. `collapseAnchor` never wrapped `newAnchor`, so a guardian alias mistake reverted with `InvalidAnchor` and the halt never landed. On the constants side, the production LOW timelock tier was cut from one day to one hour during the delta with `ADD_ASSET` riding it, and the `MIN_ARMED_DELAY_SECS` natspec still described the old one-day floor.
 
 ```solidity
-// dex-evm/src/libraries/PoolConfig.sol:651-663
-    if (presetId == 0 || dispRefPbps == 0) revert Err.InvalidInput(); // 0 = the no-shape sentinel
-    // A live preset's wall-requirement is immutable across refits: assets were assigned against its
-    // current FLAG_REQUIRES_WALL. Flipping it on an in-use preset would strand referencing assets
+// PoolConfigLib.sol
+    if (curveId == 0 || dispRefPbps == 0) revert Err.InvalidInput(); // 0 = the no-shape sentinel
+    // The flag byte is an off-chain curve key, immutable across refits: a change needs a fresh id.
+    // Nothing on chain reads it; the coverage wall is unconditional and carries no flag gate
     // (an unwalled asset left on a now-wall-required needle, or vice versa). Changing the wall
-    // requirement needs a fresh presetId; a refit keeps the flag byte.
-    uint256 existing = $.curves[presetId].header;
+    uint256 existing = $.curves[curveId].header;
     int256 oldSpan;
     if (existing != 0) {
       if (uint8(existing >> 248) != flags) revert Err.InvalidInput();
-      (, oldSpan) = NUQuartic.rangeQ($.curves[presetId], existing);
+      (, oldSpan) = NUQuarticLib.rangeQ($.curves[curveId], existing);
     }
 ```
 
@@ -947,7 +952,7 @@ Commits: [`f5c281f7`](https://github.com/btr-protocol/dex-evm/commit/f5c281f7cdc
 
 #### Status
 
-Fixed. Coverage is pinned by `PoolLifecycle.t.sol:1096`, `TokenContainment.t.sol`, `PoolAnchorTree.t.sol:547` and `DeployBaseSchedule.t.sol:46-50`.
+Fixed. Coverage is pinned by `PoolLifecycle.t.sol`, `TokenContainment.t.sol`, `PoolAnchorTree.t.sol` and `DeployBaseSchedule.t.sol`.
 
 **Rows.** 8 rows.
 
@@ -955,7 +960,7 @@ Fixed. Coverage is pinned by `PoolLifecycle.t.sol:1096`, `TokenContainment.t.sol
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `dex-evm/src/libraries/PoolSolvency.sol:53-63` |
+| HIGH | Fixed | Audit | `PoolSolvency.sol` |
 
 **Severity rationale.** One dead or out-of-band feed on any roster leg is an ordinary operational event, and it took every deposit, cross exit and hook path in the pool with it.
 
@@ -966,7 +971,7 @@ Fixed. Coverage is pinned by `PoolLifecycle.t.sol:1096`, `TokenContainment.t.sol
 Separately, the sum ran every leg's mark through `markToBaseWad` under only the halt gate and the freshness gate. The reference-band depeg breaker was not applied, so a fresh but out-of-band mark moved pool coverage for every liquidity-provider entrypoint, with cross-leg extraction bounded only by `refBandBps`.
 
 ```solidity
-// dex-evm/src/libraries/PoolSolvency.sol:57-66
+// PoolSolvency.sol
     for (uint256 i; i < n; ++i) {
       address leg = $.legs[i];
       IPool.Asset storage a = $.assets[leg];
@@ -985,13 +990,13 @@ A zero-exposure leg with a dead feed was enough to halt all liquidity operations
 
 #### Remediation
 
-Zero-exposure legs are skipped before the oracle read. An out-of-band leg's mark is bounded at the reference-band edge. The intermediate par-degrade was reverted to a fail-closed semantic: an unusable mark yields `ok = false`, `mintRate` and the weight and cap gates revert `FeedUnavailable`, and the exit cap pays `min(WAD, lastGoodC)` so the same-asset hatch stays open. Freezing credit paths on a funded dead leg is now the deliberate design: there is no leg-removal lever and the heal is on the feed side. The `bandOk` plumbing was removed from `Pricing.markToBaseWad` and the natspec matches the code.
+Zero-exposure legs are skipped before the oracle read. An out-of-band leg's mark is bounded at the reference-band edge. The intermediate par-degrade was reverted to a fail-closed semantic: an unusable mark yields `ok = false`, `mintRate` and the weight and cap gates revert `FeedUnavailable`, and the exit cap pays `min(WAD, lastGoodC)` so the same-asset hatch stays open. Freezing credit paths on a funded dead leg is now the deliberate design: there is no leg-removal lever and the heal is on the feed side. The `bandOk` plumbing was removed from `PricingLib.markToBaseWad` and the natspec matches the code.
 
 Commits: [`d9a6b556`](https://github.com/btr-protocol/dex-evm/commit/d9a6b556b0f3292e4ef4aa0e98fd36741404cc59), [`1058318d`](https://github.com/btr-protocol/dex-evm/commit/1058318d936cc8408ed41b257c17db95976c9a71), [`64d80d65`](https://github.com/btr-protocol/dex-evm/commit/64d80d65adcbf188300a745b25f69986aef63ab9), [`88e3d3f8`](https://github.com/btr-protocol/dex-evm/commit/88e3d3f851c5fbc586290e394780666f36a22eda).
 
 #### Status
 
-Closed on 2026-09-15. Pinned by `PoolSolvency.t.sol:615`, `PoolWriteDown.t.sol:183` and `PoolSolvencyDegraded.t.sol:96,:119,:161`.
+Closed on 2026-09-15. Pinned by `PoolSolvency.t.sol`, `PoolWriteDown.t.sol` and `PoolSolvencyDegraded.t.sol`.
 
 **Rows.** 3 rows.
 
@@ -999,7 +1004,7 @@ Closed on 2026-09-15. Pinned by `PoolSolvency.t.sol:615`, `PoolWriteDown.t.sol:1
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `dex-evm/script/PoolDeploy.s.sol:341`, `dex-evm/deployments/bnb-risk-params.json:84`, `dex-evm/script/lib/ChainParams.sol:168` |
+| HIGH | Fixed | Audit | `PoolDeploy.s.sol`, `bnb-risk-params.json`, `ChainParams.sol` |
 
 **Severity rationale.** A single ceremony run on a production chain would have funded a public faucet with real tokens and minted a pool whose fee floor breached the H-2 design gate, and every gate that would have caught it was inert before listing.
 
@@ -1008,7 +1013,7 @@ Closed on 2026-09-15. Pinned by `PoolSolvency.t.sol:615`, `PoolWriteDown.t.sol:1
 The pool deploy ceremony branched on roster content rather than on chain class. `_fundFaucet` ran on the same broadcast as `_createPool`, so a mainnet run reached the testnet faucet path with real tokens, and the V4 greenfield path could claim a production CREATE3 row. A swap-gate comment in the same file described a check that no longer existed.
 
 ```solidity
-// dex-evm/script/PoolDeploy.s.sol:341
+// PoolDeploy.s.sol
     Deploy.Addrs memory core = _loadCore(cfg, outPath);
     _requireSeedBudget(cfg, syms);
     vm.startBroadcast(pk);
@@ -1039,7 +1044,7 @@ Fixed 2026-09-16. Two informational rows are accepted rather than fixed: the pub
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `dex-evm/foundry.toml:30`, `dex-evm/script/UpgradePoolImpl.s.sol:48-54`, `dex-evm/src/interfaces/IAdmin.sol:54-72` |
+| HIGH | Fixed | Audit | `dex-evm/foundry.toml:30`, `UpgradePoolImpl.s.sol`, `IAdmin.sol` |
 
 **Severity rationale.** The parity gate was red at tip, so the bytecode a deployment produced for `dex-evm` no longer matched the `shared` build it linked against, and every downstream storage and library pin that was supposed to catch a mismatch was tautological or unenforced.
 
@@ -1081,7 +1086,7 @@ Fixed. Closed at the rev2 signoff.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| HIGH | Fixed | Audit | `sdk/src/router/index.ts:126-136`, `front/src/lib/quoteV2.ts:45`, `sdk/src/amm/aimm.ts:694` |
+| HIGH | Fixed | Audit | `sdk/src/router/index.ts`, `quoteV2.ts`, `sdk/src/amm/aimm.ts` |
 
 **Severity rationale.** Every real spread quote failed the client-side floor assertion and every cross-core pair returned no quote at all, so the v2 send path could not complete a swap; all three failure modes were fail-closed, so no funds were at risk.
 
@@ -1090,7 +1095,7 @@ Fixed. Closed at the rev2 signoff.
 `assertServerFloor` is the trust boundary for a server-authored slippage floor: the client recomputes the floor rather than trusting the served `min_out`. The two sides computed it differently. The server derived `min_out` from a percentage of the spread on a `1e8` scale while the SDK asserted `amount_out * (1e6 - tol_pbps) / 1e6`, so the two differed by the residue of the spread term modulo 100 and the assertion threw on every quote carrying a real spread.
 
 ```ts
-// sdk/src/router/index.ts:126
+// sdk/src/router/index.ts
 export function assertServerFloor(amountOut: bigint, tolPbps: number, minOut: bigint): void {
   if (minOut > amountOut) {
     throw new Error(`server floor ${minOut} exceeds amount_out ${amountOut}`);
@@ -1127,7 +1132,7 @@ Fixed. Deletion of the superseded v1 quote routes remains as ceremony step C-8.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/src/oracles/ExternalOracleV4.sol:739`, `dex-evm/src/oracles/ExternalOracleV4.sol:484`, `dex-evm/src/oracles/ExternalOracleV4.sol:769-771` |
+| MEDIUM | Fixed | Audit | `ExternalOracleV4.sol`, `ExternalOracleV4.sol`, `ExternalOracleV4.sol` |
 
 **Severity rationale.** Every rebias, exponent-bias change or guardian break-glass ceremony opened a window in which one push landed with no deviation band, and the deployment concerned had that ceremony as its only wedge-relief path.
 
@@ -1136,7 +1141,7 @@ Fixed. Deletion of the superseded v1 quote routes remains as ceremony step C-8.
 `_rebias` zeroes the lane. The band gate reads the lane for the previous mark, so a zeroed lane carried no previous mark and the next push was compared against nothing. The first remediation stored the pre-rebias decoded mark in `_bandAnchor1e18` and made the band fall back to it. That anchor is written only when the lane is live and in ttl, but read unconditionally, so a ceremony on a dark or out-of-ttl lane wrote no anchor and the unbanded push returned. A guardian ttl tighten reopened the same window from a different direction.
 
 ```solidity
-// dex-evm/src/oracles/ExternalOracleV4.sol:739 (_rebias)
+// ExternalOracleV4.sol (_rebias)
     uint256 word = uint256(priceSlot[slotId]);
     uint256 pl = (word >> shift) & LANE_MASK;
     if (pl & MANT_MSB != 0) _bandAnchor1e18[gi] = _decode(pl, int8(uint8(cfg >> CFG_BIAS_SHIFT)));
@@ -1146,7 +1151,7 @@ Fixed. Deletion of the superseded v1 quote routes remains as ceremony step C-8.
     _zeroSigmaConfLane(slotId, uint32(gi % LANES_PER_SLOT));
 ```
 
-Three further consequences followed from the same construction. The anchor was never invalidated by the push that resolved it, so a later rebias could band against a mark that was no longer current. Sigma is zeroed alongside the lane, so the post-rebias re-entry band was `maxDeviationBps` only, with no adaptive term. And because the clock is re-stamped to now, the elapsed-time term of the anchored band collapsed from the real gap to zero, which tightens the band precisely when the lane has been dark longest. A later fix anchored the mark to the slot clock rather than the lane's own observation second, which re-collapsed the same term when a second ceremony ran on the same slot. `registerFeed` also took no sigma or confidence seed, so a cold-start band was the bare floor.
+Three further consequences followed from the same construction. The anchor was never invalidated by the push that resolved it, so a later rebias could band against a mark that was no longer current. Sigma is zeroed alongside the lane, so the post-rebias re-entry band was `maxDevBps` only, with no adaptive term. And because the clock is re-stamped to now, the elapsed-time term of the anchored band collapsed from the real gap to zero, which tightens the band precisely when the lane has been dark longest. A later fix anchored the mark to the slot clock rather than the lane's own observation second, which re-collapsed the same term when a second ceremony ran on the same slot. `registerFeed` also took no sigma or confidence seed, so a cold-start band was the bare floor.
 
 #### Impact
 
@@ -1168,7 +1173,7 @@ Fixed, verified in the following round. One row, the slot-clock re-stamp on a ma
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/src/oracles/ExternalOracleV4.sol:514`, `dex-evm/src/oracles/ExternalOracleV4.sol:691-692`, `dex-evm/src/libraries/FeedMathLib.sol:57-61` |
+| MEDIUM | Fixed | Audit | `ExternalOracleV4.sol`, `ExternalOracleV4.sol`, `FeedMathLib.sol` |
 
 **Severity rationale.** Staleness is enforced off a clock eight lanes share, so a lane could hold an old mark while its slot mates kept its ttl alive, with the staleness premium at zero throughout.
 
@@ -1177,7 +1182,7 @@ Fixed, verified in the following round. One row, the slot-clock re-stamp on a ma
 The V4 price slot carries one timestamp for all eight lanes. A lane omitted from a routine partial blob, whether through a selective re-fetch or a sigma-only heartbeat, kept its old mark while its mates advanced the shared clock. The ttl therefore never fired, the gate passed and the staleness premium stayed at zero. A paused lane had the same shape from the other side: its entries counted as accepted, so the pause advanced the clock it was supposed to freeze.
 
 ```solidity
-// dex-evm/src/oracles/ExternalOracleV4.sol:514
+// ExternalOracleV4.sol
         if (uint16(cfg) == 0) {
           flags |= uint256(1) << (8 + lane); // unregistered: fail-soft skip
           continue;
@@ -1196,7 +1201,7 @@ A stale mark that the ttl never rejects is quoted at full confidence with no sta
 
 #### Remediation
 
-V5 gives every lane its own clock, pinned by a clock-isolation test, and mandates confidence and price entries in lockstep. `pauseFeed` is fail-closed on release. The named heal stall is fixed. The oracle half of the threshold row is closed by per-feed `sigmaFloor` and `maxDeviationBps` in V5.
+V5 gives every lane its own clock, pinned by a clock-isolation test, and mandates confidence and price entries in lockstep. `pauseFeed` is fail-closed on release. The named heal stall is fixed. The oracle half of the threshold row is closed by per-feed `sigmaFloor` and `maxDevBps` in V5.
 
 [`df7a2c3`](https://github.com/btr-protocol/dex-evm/commit/df7a2c3583346b639ab84afb3e5b05719dbfb7be), [`1f38034`](https://github.com/btr-protocol/dex-evm/commit/1f38034510c68dcd827ab6ab2dbd4caad7263cb4)
 
@@ -1210,7 +1215,7 @@ Fixed in V5. The deployed V4 retains the per-lane clock residual until the repoi
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/test/unit/PoolSolvency.t.sol:420`, `dex-evm/test/unit/OracleDeployScripts.t.sol`, `dex-evm/test/unit/ExternalOracleSigned.t.sol:190-468` |
+| MEDIUM | Fixed | Audit | `PoolSolvency.t.sol`, `OracleDeployScripts.t.sol`, `ExternalOracleSigned.t.sol` |
 
 **Severity rationale.** The design's headline solvency claim rested on an assertion that could neither confirm nor refute it, so a real regression in that property would have passed the suite.
 
@@ -1219,8 +1224,8 @@ Fixed in V5. The deployed V4 retains the per-lane clock residual until the repoi
 The pin for the third-party round-trip property asserted on `previewWithdraw`, the same-asset path, whose rate is `min(c_leg, C)`. At the probe case in question the hub sits at `c = 0.999973` with `C > 1`, so the minimum picks `c_leg`, the assertion returns identical wei whatever pool-level `C` does, and the test is blind to the property it was written for. The claim holds in claim value, not in in-kind delivery.
 
 ```solidity
-// dex-evm/test/unit/PoolSolvency.t.sol:344
-  /// RESTATED PIN. The design's headline — "pool-level C closes econ-probe case 3" — is FALSE
+// PoolSolvency.t.sol
+  /// RESTATED PIN. The design's headline - "pool-level C closes econ-probe case 3" - is FALSE
   /// as the original was written: `testFuzz_third_party_after_swap_roundtrip` asserted on
   /// `previewWithdraw`, the SAME-ASSET path, whose rate is `min(c_leg, C)`. Case 3's hub sits at
   /// c = 0.999973 with C > 1, so the minimum picks `c_leg`, the assertion returns the identical wei
@@ -1250,7 +1255,7 @@ Fixed.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Closed | Audit | `front/src/hooks/usePoolData.ts:169-174`, `front/src/components/features/swap/LpTab.tsx:335-360`, `front/src/pages/swap/pairState.ts:71` |
+| MEDIUM | Closed | Audit | `usePoolData.ts`, `LpTab.tsx`, `pairState.ts` |
 
 **Severity rationale.** The LP tab printed a minimum received under a tooltip promising the batch would revert below it, while the same-asset withdraw path could be sent with a floor lower than that figure.
 
@@ -1259,7 +1264,7 @@ Fixed.
 The same-asset LP withdraw originally sent `minAmountOut = 0n` while the recap rendered a minimum received derived from the quote. The chain enforces nothing at zero. The first fix threaded a required floor through the hook; the floor helper then took the lower of the promised figure and a slipped fresh preview, which reintroduces a send below the number on screen whenever the fresh preview is lower.
 
 ```ts
-// front/src/hooks/usePoolData.ts:169 (lpExitFloor, before the fix)
+// usePoolData.ts (lpExitFloor, before the fix)
 export const lpExitFloor = (promised: bigint, previewOut: bigint, slipFrac: number): bigint => {
   if (previewOut <= 0n) return promised;
   if (previewOut < promised) throw new Error(LP_EXIT_STALE_ERROR);
@@ -1290,7 +1295,7 @@ Closed. The LP floor change is signed off on the second revision, 2026-09-14; th
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | QA | `dex-evm/src/PoolFactory.sol:396-409`, `dex-evm/src/PoolFactory.sol:432`, `dex-evm/src/PoolFactory.sol:175` |
+| MEDIUM | Fixed | QA | `PoolFactory.sol`, `PoolFactory.sol`, `PoolFactory.sol` |
 
 **Severity rationale.** `PoolFactory` is not upgradeable, so landing the authority change without the storage-version gate would have spent the single irreversible redeploy window; the residual paths need a compromised owner and are covered by notice, guardian cancel and grace expiry.
 
@@ -1299,12 +1304,12 @@ Closed. The LP floor change is signed off on the second revision, 2026-09-14; th
 No `STORAGE_VERSION` existed anywhere in the sources or tests, and neither `_validateImplementation` nor `executeReferenceUpgrade` carried a version check. The execute path also skipped request-time revalidation: it checked timing and pending state, then swapped the implementation for the entire live fleet without re-pinning the candidate against live wiring.
 
 ```solidity
-// dex-evm/src/PoolFactory.sol:327
+// PoolFactory.sol
   function executeReferenceUpgrade() external onlyAdmin {
     if (block.timestamp < upgradeTimelock) revert Err.NotReady();
-    // A matured pending upgrade expires SC.GRACE_PERIOD after its eta so a forgotten,
+    // A matured pending upgrade expires SC.GRACE_PERIOD_SECS after its eta so a forgotten,
     // stale-vetted impl cannot be executed months later; must be re-requested past the window.
-    if (block.timestamp > upgradeTimelock + SC.GRACE_PERIOD) revert Err.Expired();
+    if (block.timestamp > upgradeTimelock + SC.GRACE_PERIOD_SECS) revert Err.Expired();
     if (pendingReferencePool == address(0)) revert Err.NoPending();
     address oldImpl = implementation;
     address newImpl = pendingReferencePool;
@@ -1316,7 +1321,7 @@ No `STORAGE_VERSION` existed anywhere in the sources or tests, and neither `_val
   }
 ```
 
-The registry lifecycle on the same contract had three further defects. `deregisterPool` deleted `isPool`, which is written only inside `_registerPool` and has no re-register path, so de-listing also and permanently revoked the pool's factory write credential: `registerTokens` and `setPoolBaseToken` both reverted, and `PoolConfig.initAsset` calls `registerTokens` unconditionally. A guardian could not evict a pool at all, only the owner could. A related fix for a pending-reference guard touched only one of the two cited sites. Registry fill by cheap proxies was capped at 128 entries, and storage-layout safety was build-time only.
+The registry lifecycle on the same contract had three further defects. `deregisterPool` deleted `isPool`, which is written only inside `_registerPool` and has no re-register path, so de-listing also and permanently revoked the pool's factory write credential: `registerTokens` and `setPoolBaseToken` both reverted, and `PoolConfigLib.initAsset` calls `registerTokens` unconditionally. A guardian could not evict a pool at all, only the owner could. A related fix for a pending-reference guard touched only one of the two cited sites. Registry fill by cheap proxies was capped at 128 entries, and storage-layout safety was build-time only.
 
 #### Impact
 
@@ -1338,7 +1343,7 @@ Fixed. Verified 2026-09-11; the advisory and informational rows were closed on t
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | QA | `dex-evm/abi/gen.py:74-90`, `dex-evm/src/interfaces/IPool.sol:464`, `dex-evm/abi/events.json` |
+| MEDIUM | Fixed | QA | `dex-evm/abi/gen.py:74-90`, `IPool.sol`, `events.json` |
 
 **Severity rationale.** Integrators decode events off the published artifacts, so a name carrying two signatures produced silent mis-decodes; the checker failure meant the artifact could not be regenerated to correct it.
 
@@ -1347,7 +1352,7 @@ Fixed. Verified 2026-09-11; the advisory and informational rows were closed on t
 `abi/gen.py --check` failed on event-name collisions between generations: the generator collects every event signature per name and exits non-zero when any name carries more than one, and three names did. With the check red, `events.json` could not be regenerated, so it kept publishing the first generation's `topic0` for both `FeedWiden` events and lacked `SolvencyUpdated` and `UntrackedSynced` entirely. `LegsBackfilled` was declared with two signatures across the interfaces.
 
 ```solidity
-// dex-evm/src/interfaces/IAdmin.sol:206
+// IAdmin.sol
   // SWEEP and BACKFILL_LEGS executes emit nothing here: the pool logs `IPool.Swept` and
   // `IPool.LegsBackfilled` itself. A second declaration of either name on this interface put two
   // signatures (or two indexed layouts) behind one event name, which no off-chain decoder resolves.
@@ -1373,7 +1378,7 @@ Fixed. The interface-gap rows were closed as informational on 2026-09-10 under t
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | QA | `dex-evm/src/Admin.sol:549`, `shared/evm/src/Constants.sol:60`, `dex-evm/src/libraries/PoolLiquidity.sol:266-277` |
+| MEDIUM | Fixed | QA | `Admin.sol`, `ConstantsLib.sol`, `PoolLiquidityLib.sol` |
 
 **Severity rationale.** Operators act on the runbook, and the drifted pages told them a defensive tighten was instant when the code queues it, so an incident response would have been mistimed; no funds are at risk directly.
 
@@ -1382,7 +1387,7 @@ Fixed. The interface-gap rows were closed as informational on 2026-09-10 under t
 The parameter documentation still presented a `vegaBps` raise as an instant defensive tighten. The bounded path is deliberately not `setAssetParams` behind a flag and the absolute path queues, so the documented behaviour did not match either lane.
 
 ```solidity
-// dex-evm/src/Admin.sol:527
+// Admin.sol
   /// @dev Deliberately NOT `setAssetParams` behind a lane flag: fenced, clamped, never queues.
   function setAssetParamsBounded(
     address pool,
@@ -1416,7 +1421,7 @@ Closed. Documentation sweeps landed 2026-09-15; the residual wording was verifie
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | QA | `sdk/src/router/index.ts:325`, `sdk/src/router/index.ts:84`, `dex-evm/src/libraries/PoolIOLib.sol:93-101` |
+| MEDIUM | Fixed | QA | `sdk/src/router/index.ts`, `sdk/src/router/index.ts`, `PoolIOLib.sol` |
 
 **Severity rationale.** A wrong floor either reverts the batch after the first hop has mined or leaves roughly twice the intended tolerance extractable on the legacy two-hop path where no router contract exists.
 
@@ -1425,7 +1430,7 @@ Closed. Documentation sweeps landed 2026-09-15; the residual wording was verifie
 `planToLegs` wrote the end-to-end server floor onto each split part and onto hop 2 of a chained part. Hop 2 is funded by hop 1's floor, not hop 1's quote, so flooring it on the unscaled end-to-end quote left zero margin and ordinary noise reverted the batch after hop 1 had already mined.
 
 ```ts
-// sdk/src/router/index.ts:324
+// sdk/src/router/index.ts
       const server = opts.serverFloors?.[t2out.address.toLowerCase()];
       // The server's own tolerance scales the intermediate hop when it is present; the legacy
       // caller-supplied fraction only stands in for a plan with no server floor.
@@ -1457,7 +1462,7 @@ Closed. Landed 2026-09-15 and verified on the 2026-09-14 review.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `sdk/src/router/index.ts:104`, `sdk/src/utils/format.ts:88`, `sdk/src/router/index.ts:210` |
+| MEDIUM | Fixed | Audit | `sdk/src/router/index.ts`, `sdk/src/utils/format.ts`, `sdk/src/router/index.ts` |
 
 **Severity rationale.** The quote service was the sole author of the floor and the client applied it unchecked up to 999000 pbps, so a compromised or misconfigured quote service could set an effectively zero floor on every swap the SDK builds.
 
@@ -1466,7 +1471,7 @@ Closed. Landed 2026-09-15 and verified on the 2026-09-14 review.
 The SDK treated the quote service as the sole floor author. A returned `tol_pbps` was applied as given, with no cross-check against the quoted output and no ceiling from the slippage the user had chosen, so the user's setting never bounded the floor actually encoded into the transaction.
 
 ```ts
-// sdk/src/router/index.ts:104
+// sdk/src/router/index.ts
 export function assertServerFloor(amountOut: bigint, tolPbps: number, minOut: bigint): void {
   if (minOut > amountOut) {
     throw new Error(`server floor ${minOut} exceeds amount_out ${amountOut}`);
@@ -1501,7 +1506,7 @@ Fixed 2026-09-16. The approval reset row is Accepted: no listed token requires t
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | QA | `dex-evm/src/Admin.sol:932-937`, `dex-evm/src/libraries/PoolConfig.sol:617-661` |
+| MEDIUM | Fixed | QA | `Admin.sol`, `PoolConfigLib.sol` |
 
 **Severity rationale.** The tighten is the incident-response lever, so its silent reversal at the end of a tuning delay reintroduces the exact exposure the operator had just closed.
 
@@ -1510,7 +1515,7 @@ Fixed 2026-09-16. The approval reset row is Accepted: no listed token requires t
 A queued `UPDATE_RISK` op carried an absolute `RiskConfig` with no request-time snapshot and no per-field compare-and-swap. The execute decoded the stored payload and wrote it wholesale, so an instant `setRiskConfigTighten` landing during the tuning delay was overwritten without a revert: the cap re-raised, the gate re-cleared, kappa re-lowered.
 
 ```solidity
-// dex-evm/src/Admin.sol:932
+// Admin.sol
   function executeUpdateRiskConfig(address pool, address token) external {
     _onlyPoolAdmin(pool);
     IPool.RiskConfig memory cfg =
@@ -1542,7 +1547,7 @@ Closed.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/src/Admin.sol:396-413`, `dex-evm/src/Admin.sol:423-435`, `dex-evm/src/Admin.sol:78` |
+| MEDIUM | Fixed | Audit | `Admin.sol`, `Admin.sol`, `Admin.sol` |
 
 **Severity rationale.** The queue delay is the exposure window: any tighten applied inside it was silently reverted at execute time, and the operation that did so looked routine.
 
@@ -1553,7 +1558,7 @@ Closed.
 The blob shape then changed without a version tag and without an on-chain reader, so an operation queued under one `Admin` and executed under another decoded into the wrong fields.
 
 ```solidity
-// dex-evm/src/Admin.sol:528
+// Admin.sol
     if (blob.length == ASSET_PARAMS_BLOB_LEGACY_BYTES) {
       p = abi.decode(blob, (AssetParamsPayload));
       snap.minLiquidity = cur.minLiquidity;
@@ -1590,7 +1595,7 @@ Fixed. Successive remediation rounds each re-verified in the following round; th
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed; deployment pending | Audit | `dex-evm/src/Admin.sol:394`, `dex-evm/src/Admin.sol:571`, `dex-evm/src/libraries/PoolIOLib.sol:43` |
+| MEDIUM | Fixed; deployment pending | Audit | `Admin.sol`, `Admin.sol`, `PoolIOLib.sol` |
 
 **Severity rationale.** These are untimelocked writes on live legs; the worst realized case is a leg whose routes all revert, reachable in one transaction by a single key.
 
@@ -1601,7 +1606,7 @@ The steward lane had no on-chain rate limit. The hard fences were the entire 24 
 `Admin` treated any `vegaBps` raise as an instant defensive tighten with no `dispersionCap` re-check, so one untimelocked write could push a leg's live dispersion past the interior swing cap, after which every route through that leg reverts. `setFlowCooldown` was untimelocked in both directions and absent from the tier table, the only risk write in that position; the locks read the cooldown live, so setting it to zero retroactively unlocked.
 
 ```solidity
-// dex-evm/src/Admin.sol:394
+// Admin.sol
   function setFlowCooldown(address pool, uint16 cooldownSecs) external {
     _onlyAdmin();
     IPool(pool).adminSetFlowCooldown(cooldownSecs);
@@ -1631,7 +1636,7 @@ Fixed; deployment pending. Sentinel resolution verified 2026-09-11. One row in t
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/src/oracles/ExternalOracleV5.sol:363-372`, `dex-evm/src/oracles/ExternalOracleV4.sol:243-258`, `sdk/src/oracle/wire.ts:28` |
+| MEDIUM | Fixed | Audit | `ExternalOracleV5.sol`, `ExternalOracleV4.sol`, `sdk/src/oracle/wire.ts` |
 
 **Severity rationale.** Exploiting the replay needs a stalled slot plus a drift inside a specific window and costs only gas, and the heal bound governs how far a dark lane can jump when it comes back.
 
@@ -1642,7 +1647,7 @@ The signed-blob push carried no expiry and no nonce, and reconstruction aliased 
 The heal bound was the second half. `attestReentry` used an allowance whose sigma term grew with the gap rather than being capped at the intended multiple of `maxDev`, so a long-gap, high-sigma lane could heal past the band, and the quarantine cap was self-healable by the same quorum.
 
 ```solidity
-// dex-evm/src/oracles/ExternalOracleV5.sol:362
+// ExternalOracleV5.sol
   function _bandPass(OracleStorageV5.OracleData storage $, BandCtx memory c)
     private
     returns (bool)
@@ -1677,7 +1682,7 @@ Fixed, verified 2026-09-14 and 2026-09-15. One row is closed with no action: the
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/src/Pool.sol:692-693`, `dex-evm/src/libraries/PoolLiquidity.sol:183`, `dex-evm/src/Pool.sol:701` |
+| MEDIUM | Fixed | Audit | `Pool.sol`, `PoolLiquidityLib.sol`, `Pool.sol` |
 
 **Severity rationale.** Every harvest moved coverage on a live book, so the divergence compounded with harvest frequency rather than needing an attacker.
 
@@ -1686,7 +1691,7 @@ Fixed, verified 2026-09-14 and 2026-09-15. One row is closed with no action: the
 `hookCreditYield` credited the liability at par while `donate` credited it at coverage, so the two liability-credit sites disagreed on the unit they book in. Coverage therefore moved on every harvest, transferring value between legs.
 
 ```solidity
-// dex-evm/src/Pool.sol:692
+// Pool.sol
     $.assetHooks[t].lastCreditAt = uint32(block.timestamp);
     a.reserves += uint128(amount);
     a.liabilities += uint128(amount);
@@ -1714,7 +1719,7 @@ Fixed 2026-09-15. The harvest degrade row is conditional on the solvency-degrade
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/src/hooks/YieldHook.sol:65-69`, `dex-evm/src/Pool.sol:614` |
+| MEDIUM | Fixed | Audit | `YieldHook.sol`, `Pool.sol` |
 
 **Severity rationale.** The reachable action is a write-down or a queued-operation cancel on a pool the caller does not administer; it requires a privileged role, not an anonymous caller.
 
@@ -1723,7 +1728,7 @@ Fixed 2026-09-15. The harvest degrade row is conditional on the solvency-degrade
 `YieldHook`'s cancel authority was the protocol guardian or owner rather than the pool's own seat, so a foreign pool's seat could not cancel its own queued hook operation while the protocol could cancel one belonging to a foreign seat. The hook seat authority was not pool-scoped on the write-down and recall paths either, so a keeper push could reach another pool's hook slot.
 
 ```solidity
-// dex-evm/src/hooks/YieldHook.sol:65
+// YieldHook.sol
   modifier onlyGuardianOrOwner() {
     AccessControl ac_ = AccessControl(AC);
     if (!ac_.isGuardianOrAuth(msg.sender, ac_.owner())) revert Err.NotAuth();
@@ -1752,7 +1757,7 @@ Fixed. Both rows closed in the same change.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Closed | Audit | `dex-evm/src/periphery/WombexClaim.sol:91`, `dex-evm/src/periphery/WombexClaim.sol:140-163`, `dex-evm/src/LPToken.sol:145-160` |
+| MEDIUM | Closed | Audit | `WombexClaim.sol`, `WombexClaim.sol`, `LPToken.sol` |
 
 **Severity rationale.** Both rows require a deployment-time mistake or a specific one-transaction sequence rather than an adversary, and the failure mode is a stranded or mispriced leg in a periphery contract, not a loss from a pool.
 
@@ -1761,7 +1766,7 @@ Fixed. Both rows closed in the same change.
 The claim contract's constructor validated the leg array but not the tree root, and did not reject duplicate legs. A root of zero or a repeated leg produced a tree that walks without reverting and can mis-price or strand a leg.
 
 ```solidity
-// dex-evm/src/periphery/WombexClaim.sol:91
+// WombexClaim.sol
   constructor(address pool_, address funder_, bytes32 root_, address[] memory legs_) {
     if (pool_ == address(0) || funder_ == address(0)) revert Err.ZeroAddr();
     uint256 n = legs_.length;
@@ -1799,7 +1804,7 @@ Closed. The tree validation is fixed; the cooldown is closed as intended behavio
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Closed | Audit | `dex-evm/src/libraries/PoolLiquidity.sol:340` |
+| MEDIUM | Closed | Audit | `PoolLiquidityLib.sol` |
 
 **Severity rationale.** It requires a third-party issuer action rather than an attacker, but the affected legs are listed centrally issued tokens where that action is a real and exercised capability.
 
@@ -1808,7 +1813,7 @@ Closed. The tree validation is fixed; the cooldown is closed as intended behavio
 The withdraw entrypoint gates both endpoints on the pool's own halt flags. It has no view of the token issuer's state, so a leg whose issuer has paused transfers or blocklisted the pool still passes the gate and the cross branch cannot be refilled.
 
 ```solidity
-// dex-evm/src/libraries/PoolLiquidity.sol:360
+// PoolLiquidityLib.sol
       // HALT_MASK check on BOTH endpoints: withdrawTo is a value-moving user
       // entrypoint (esp. cross-asset, priced off the output mark). Without this a halt is
       // bypassed: draining a halted asset's reserves, or pushing a good asset
@@ -1836,7 +1841,7 @@ Closed. Monitoring landed on the second remediation revision and the accepted re
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/src/libraries/Pricing.sol:45,48-50`, `dex-evm/src/libraries/Pricing.sol:236-250`, `dex-evm/src/libraries/PoolConfig.sol:73-80` |
+| MEDIUM | Fixed | Audit | `PricingLib.sol`, `PricingLib.sol`, `PoolConfigLib.sol` |
 
 **Severity rationale.** No fund loss and no attacker path; the cost was that a risk-shaped bound was in fact a storage-packing bound, applied to legs it could not describe.
 
@@ -1847,12 +1852,12 @@ The 50 bp interior displacement ceiling was derived from the width of the `uint1
 It bound `minDispersionPbps` at write time even on depth-1 legs that can never be routed as an interior node, which is why one equity leg could not carry its tail. Being a constant fraction of mark, it is simultaneously far too wide for a stable pair and too narrow for an equity at the open. The same field width also let the composed spread saturate a `uint16` at peak confidence interval, waiving the tail premium at a 3.28% maximum fee against 11% modelled, though the fence component itself never saturates.
 
 ```solidity
-// dex-evm/src/libraries/Pricing.sol:44-50
+// PricingLib.sol
   uint256 private constant FENCE_BUDGET_PBPS = uint256(type(uint16).max) / MAX_INTERIOR_LEGS;
-  /// @notice Interior-leg mid swingPbps ceiling, PBPS — SOLVED FOR, never chosen. br.market/docs.
+  /// @notice Interior-leg mid swingPbps ceiling, PBPS - SOLVED FOR, never chosen. br.market/docs.
   /// @dev DERIVATION: `_fenceOfSwingPbps` is ceil(x*P/(P - cap/2)) over P = PBPS, so the budget line
   ///      `N*fence <= uint16.max` at the worst case x = cap is ceil(cap*P/(P - cap/2)) <= B, i.e.
-  ///      cap <= 2*B*P/(2P + B) — this expression. MAX_DEPTH 4 => N 6, B 10922, cap 10862, per-leg
+  ///      cap <= 2*B*P/(2P + B) - this expression. MAX_DEPTH 4 => N 6, B 10922, cap 10862, per-leg
   ///      fence 10922, composed 65532 <= 65535.
 ```
 
@@ -1864,7 +1869,7 @@ Legs that can never be interior were denied dispersion they could safely carry, 
 
 #### Remediation
 
-Interior-capability scoping is in tree: `PoolConfig.dispersionCeiling` and `isInteriorCapable` charge the cap only to legs that can be routed as an interior node, which closes the substantive complaint. The depth-aware storage re-pack was considered and dropped; the `uint16` saturation is retained deliberately, since the fence component is bounded at 65532 and cannot saturate, and reverting instead would deny service to legitimate quotes. The guard suite is green at 895 passing. The `_legMid` guarantee is restated at its true locus.
+Interior-capability scoping is in tree: `PoolConfigLib.dispersionCeiling` and `isInteriorCapable` charge the cap only to legs that can be routed as an interior node, which closes the substantive complaint. The depth-aware storage re-pack was considered and dropped; the `uint16` saturation is retained deliberately, since the fence component is bounded at 65532 and cannot saturate, and reverting instead would deny service to legitimate quotes. The guard suite is green at 895 passing. The `_legMid` guarantee is restated at its true locus.
 
 #### Status
 
@@ -1876,7 +1881,7 @@ Fixed for the scoping and the test suite. The saturation behaviour is accepted a
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `core/src/fixed.rs:702`, `core/src/pricing.rs:124`, `core/src/mitch.rs:41` |
+| MEDIUM | Fixed | Audit | `fixed.rs`, `pricing.rs`, `mitch.rs` |
 
 **Severity rationale.** The mirror is the quoting and simulation authority off-chain, so a constant that lags the chain produces confidently wrong quotes with no revert to signal it.
 
@@ -1885,8 +1890,8 @@ Fixed for the scoping and the test suite. The saturation behaviour is accepted a
 `STALE_Z` was raised from 100 to 472 in Solidity only. The Rust mirror, the SDK's generated constants and the published documentation all stayed at 100, and the mirror's own parity test pinned the stale value, so the drift was invisible to the suite that exists to catch it.
 
 ```rust
-// core/src/fixed.rs:701-705
-// Pricing.sol
+// fixed.rs
+// PricingLib.sol
 pub const STALE_Z: U256 = U256::from_u64(100);
 pub const STALE_GRACE_CAP_SECS: U256 = U256::from_u64(30);
 pub const MAX_DISPERSION_PBPS: U256 = U256::from_u64(900_000); // PoolConstantsLib
@@ -1908,7 +1913,7 @@ Commits: [`590b3e1`](https://github.com/btr-protocol/core/commit/590b3e12b77493c
 
 #### Status
 
-Fixed on 2026-09-11. Pinned by `pricing_parity.rs` and `PricingRounding.t.sol:30,:56,:67,:78`. The remaining informational items were closed in the 2026-09-10 review.
+Fixed on 2026-09-11. Pinned by `pricing_parity.rs` and `PricingRounding.t.sol`. The remaining informational items were closed in the 2026-09-10 review.
 
 **Rows.** 8 rows.
 
@@ -1916,7 +1921,7 @@ Fixed on 2026-09-11. Pinned by `pricing_parity.rs` and `PricingRounding.t.sol:30
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `front/src/components/features/swap/SwapForm.tsx:1163-1198`, `front/src/components/features/swap/SwapForm.tsx:1153-1157`, `front/src/components/features/swap/SwapForm.tsx:749` |
+| MEDIUM | Fixed | Audit | `SwapForm.tsx`, `SwapForm.tsx`, `SwapForm.tsx` |
 
 **Severity rationale.** Both defects need only an ordinary user on an ordinary tape; the outcome is a fill below the displayed floor or a duplicated order, each of which the user must still sign.
 
@@ -1927,7 +1932,7 @@ On submit the form replaced the displayed plan with a fresh route plan and deriv
 The re-quote, the balance re-check and the plan build all ran before `setSubmitting`, leaving roughly an 800 ms window with no spinner in which a second click launched a parallel batch on sequential nonces, debiting the input amount twice. Each flight required its own wallet confirmation, so there was no silent double spend, but the absent spinner invited the second click.
 
 ```ts
-// front/src/components/features/swap/SwapForm.tsx:1165-1180
+// SwapForm.tsx
     try {
       const spendable = spendableOf(fromSym, rawBalanceOf(fromSym));
       if (spendable !== undefined && exactAmountIn !== undefined && exactAmountIn > spendable) {
@@ -1965,7 +1970,7 @@ Fixed on 2026-09-11, pinned by `swapTx.test.ts`. Informational rows closed on 20
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `sdk/src/router/index.ts:352-369`, `sdk/src/router/index.ts:277-293`, `sdk/src/router/lpRoutes.ts:451-475` |
+| MEDIUM | Fixed | Audit | `sdk/src/router/index.ts`, `sdk/src/router/index.ts`, `sdk/src/router/lpRoutes.ts` |
 
 **Severity rationale.** The library grants an approval to whatever pool address it is handed, so a consumer that builds plans from an untrusted route service loses the approved balance; the shipped front end defuses it, direct consumers do not.
 
@@ -1974,7 +1979,7 @@ Fixed on 2026-09-11, pinned by `swapTx.test.ts`. Informational rows closed on 20
 `planToLegs` accepted the backend-supplied `poolAddr` verbatim with no allowlist. The legacy N-call approval path grants per pool, so a rogue pool address served in a route plan received an approval and could drain it, amplified when `approveMax` was set. The front end defuses this by sending the token universe to the backend, tag-allowlisting the result, defaulting `approveMax` to false, preferring the router and backstopping with `UnknownPool`; direct SDK and legacy consumers had none of that.
 
 ```ts
-// sdk/src/router/index.ts:350-369
+// sdk/src/router/index.ts
 export function buildApprovalCalls(legs: ExecLeg[], opts: BuildOpts): ExecCall[] {
   const wnative = opts.wrappedNative?.toLowerCase();
   const { wrapValue } = validateLegs(legs, wnative);
@@ -2003,7 +2008,7 @@ Commits: [`3a03ab7`](https://github.com/btr-protocol/sdk/commit/3a03ab78ad4bb3b9
 
 #### Status
 
-Fixed on 2026-09-10 and 2026-09-11. Pinned by `liability.test.ts:40` and `lpRoutes.test.ts:215`. The decimal-scale item was closed below the low-severity bar on 2026-09-10.
+Fixed on 2026-09-10 and 2026-09-11. Pinned by `liability.test.ts` and `lpRoutes.test.ts`. The decimal-scale item was closed below the low-severity bar on 2026-09-10.
 
 **Rows.** 6 rows.
 
@@ -2011,7 +2016,7 @@ Fixed on 2026-09-10 and 2026-09-11. Pinned by `liability.test.ts:40` and `lpRout
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | QA | `front/.github/workflows/ci.yml:44`, `front/src/App.tsx:318`, `front/src/pages/metrics/metricsModel.tsx:121` |
+| MEDIUM | Fixed | QA | `front/.github/workflows/ci.yml:44`, `App.tsx`, `metricsModel.tsx` |
 
 **Severity rationale.** A broken pipeline and an ungated route are both certain, not probabilistic; the impact is loss of the gate that was supposed to hold, not loss of funds.
 
@@ -2048,7 +2053,7 @@ Closed on 2026-09-16, with the candle eviction row accepted, no change required.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `front/src/lib/walletCalls.ts:208`, `front/src/lib/wallet.tsx:477`, `front/src/components/shared/TxSteps.tsx:79` |
+| MEDIUM | Fixed | Audit | `walletCalls.ts`, `wallet.tsx`, `TxSteps.tsx` |
 
 **Severity rationale.** A user acting on a false "cancelled, no gas spent" message will resubmit, and the resubmission is a second real transaction; no attacker is required.
 
@@ -2057,7 +2062,7 @@ Closed on 2026-09-16, with the candle eviction row accepted, no change required.
 `sentDespiteRejection` decided whether a rejected prompt had nevertheless broadcast by comparing the pending nonce before and after, retrying once after 1.2 s. A transaction that reached the mempool after that window read as unchanged, and the interface certified it as cancelled with no gas spent.
 
 ```ts
-// front/src/lib/walletCalls.ts:203-214
+// walletCalls.ts
 export async function sentDespiteRejection(
   provider: Eip1193Provider,
   from: Address,
@@ -2095,7 +2100,7 @@ Closed on 2026-09-16, with the gas-reserve row accepted, no change required.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/src/libraries/PoolSolvency.sol:79`, `dex-evm/src/libraries/PoolSolvency.sol:131` |
+| MEDIUM | Fixed | Audit | `PoolSolvency.sol`, `PoolSolvency.sol` |
 
 **Severity rationale.** The stranded state is reachable through ordinary use, a full same-asset exit below par, and the next depositor captures the stranded reserves with no special access.
 
@@ -2104,7 +2109,7 @@ Closed on 2026-09-16, with the gas-reserve row accepted, no change required.
 `solvency` returned `WAD` whenever the claim book was empty, including when the pool still held reserves. A full same-asset exit at a coverage rate below one strands reserves with zero liabilities, and the next depositor mints face value against a book that already holds surplus, capturing it. The natspec claimed the pooled rate was preserved.
 
 ```solidity
-// dex-evm/src/libraries/PoolSolvency.sol:76-80
+// PoolSolvency.sol
       navBase += (r * px) / SC.WAD;
       claimBase += (l * px) / SC.WAD;
     }
@@ -2126,7 +2131,7 @@ Commits: [`1a02316d`](https://github.com/btr-protocol/dex-evm/commit/1a02316dc78
 
 #### Status
 
-Closed. Pinned by `PoolSolvency.t.sol:569`.
+Closed. Pinned by `PoolSolvency.t.sol`.
 
 **Rows.** 2 rows.
 
@@ -2134,16 +2139,16 @@ Closed. Pinned by `PoolSolvency.t.sol:569`.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/script/Deploy.s.sol:80-88`, `dex-evm/script/OracleV4Unwedge.s.sol:61-64`, `dex-evm/script/lib/ChainParams.sol:74-78` |
+| MEDIUM | Fixed | Audit | `Deploy.s.sol`, `OracleV4Unwedge.s.sol`, `ChainParams.sol` |
 
 **Severity rationale.** Every failure mode here is fail-closed at broadcast rather than a mispricing, but the incident-time scripts are exactly the ones whose failure matters most, and a new listing built against a retired contract surface would have to be re-run.
 
 #### Description
 
-The listing path still compiled against the V1 `ExternalOracle` surface. `Deploy.s.sol` used the V1 type as the shared feed ABI and `ArcOracleDeploy.s.sol:180` constructed it, so a listing performed with the shipped scripts would have targeted a retired contract. The same ceremony shape persisted throughout `ArcPoolDeploy.s.sol`: the legacy-oracle gate reverted without a `REF_ORACLE` bypass, the mirror and anchor helpers called a V1-only `addFeed`, the mark helper required seed keys a greenfield run never writes, and `FeedOrderLib.write` required a `getFeedIds` the live contract does not expose.
+The listing path still compiled against the V1 `ExternalOracle` surface. `Deploy.s.sol` used the V1 type as the shared feed ABI and `ArcOracleDeploy.s.sol` constructed it, so a listing performed with the shipped scripts would have targeted a retired contract. The same ceremony shape persisted throughout `ArcPoolDeploy.s.sol`: the legacy-oracle gate reverted without a `REF_ORACLE` bypass, the mirror and anchor helpers called a V1-only `addFeed`, the mark helper required seed keys a greenfield run never writes, and `FeedOrderLib.write` required a `getFeedIds` the live contract does not expose.
 
 ```solidity
-// dex-evm/script/Deploy.s.sol:80
+// Deploy.s.sol
   function _broadcastDeployWith(address acOverride) internal returns (Addrs memory a) {
     uint256 pk = vm.envUint("DEPLOYER_PK");
     a.deployer = vm.addr(pk);
@@ -2178,7 +2183,7 @@ Fixed, verified 2026-09-10 and 2026-09-11 and at the rev2 chair review. Four inf
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/deployments/arc-risk-params.json:593`, `dex-evm/script/OracleV4Deploy.s.sol:127-133`, `dex-evm/deployments/bnb-risk-params.json` |
+| MEDIUM | Fixed | Audit | `arc-risk-params.json`, `OracleV4Deploy.s.sol`, `bnb-risk-params.json` |
 
 **Severity rationale.** Too-narrow dispersion is the direction that picks off liquidity providers, and an identity base depeg lane means the halt that protects every swap on the chain can never fire; both ship in the manifest and neither is caught by a code-level cap.
 
@@ -2189,7 +2194,7 @@ The 2026-09-03 patch set `minDispersion` flat at 1950 pbps (19.5 bp) for all ten
 The BNB scaffold had two binding defects. The deploy registered feed ids as `keccak(token, quote)` while the push side addresses feeds by their MITCH `bytes32(ticker_id)`, so every genesis lane, the base USDC-USD lane included, would have gone stale on day one. Separately, the manifest pinned the `.USD` unit to USDC itself, which makes the base depeg lane `keccak(base, base)`: an identity that nothing quotes, so a Binance-Peg USDC depeg trips no halt. The manifest called that lane "owner pinned" with no owner record behind it.
 
 ```solidity
-// dex-evm/script/OracleV4Deploy.s.sol:130
+// OracleV4Deploy.s.sol
   /// @dev P1-RISK-1 (owner, 2026-09-11): production halts on a REAL USDC-USD depeg. A USD unit equal
   ///      to the base makes that lane keccak(base, base), an identity no signer prices, so the halt
   ///      it exists for can never fire. Refused on a production chain.
@@ -2208,7 +2213,7 @@ Under the flat equity floor, quoted dispersion sat inside the measured tail on a
 
 #### Remediation
 
-Per-name dispersion floors were written on chain on 2026-09-04 and verified on all ten names; three legs remain deliberately clamped short of the measured tail. BNB genesis now binds MITCH ids, with the deploy record and the push-side manifest asserted equal by `OracleDeployScripts.t.sol`, and the base depeg lane is a real signed USDC-USD lane halting at 5 percent per `PoolConstantsLib.sol:94`. The USD unit is refused outright when it equals the base on a production chain.
+Per-name dispersion floors were written on chain on 2026-09-04 and verified on all ten names; three legs remain deliberately clamped short of the measured tail. BNB genesis now binds MITCH ids, with the deploy record and the push-side manifest asserted equal by `OracleDeployScripts.t.sol`, and the base depeg lane is a real signed USDC-USD lane halting at 5 percent per `PoolConstantsLib.sol`. The USD unit is refused outright when it equals the base on a production chain.
 
 #### Status
 
@@ -2220,7 +2225,7 @@ Fixed. Per-name equity floors were applied on chain 2026-09-04; the BNB bindings
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `sdk/scripts/fetch-abis.ts:84`, `sdk/src/abis/fetch.ts:7-19`, `sdk/src/cache.ts:38-53` |
+| MEDIUM | Fixed | Audit | `sdk/scripts/fetch-abis.ts`, `sdk/src/abis/fetch.ts`, `sdk/src/cache.ts` |
 
 **Severity rationale.** The check that was meant to authenticate a fetched ABI derived its expected value from the fetched payload itself, so a hostile response passed; reaching it requires control of the serving API, which is a trusted tier.
 
@@ -2229,7 +2234,7 @@ Fixed. Per-name equity floors were applied on chain 2026-09-04; the BNB bindings
 `fetch-abis.ts` pinned each ABI by function names plus one selector. The selector comparison recomputed the selector from the signature string it had just read out of the fetched payload, so both sides of the comparison came from the same untrusted input and any payload that named the right functions passed.
 
 ```ts
-// sdk/scripts/fetch-abis.ts:84
+// sdk/scripts/fetch-abis.ts
   for (const [sig, want] of Object.entries(target.pins)) {
     const e = fns.find((f) => sigOf(f) === sig);
     if (!e) throw new Error(`integrity: ${target.name} ABI missing pinned ${sig}`);
@@ -2261,7 +2266,7 @@ Fixed, verified 2026-09-10 and 2026-09-11. Covered by `abi-pin.test.ts`.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `sdk/src/eth/rlp.ts:42-44`, `sdk/src/eth/client.ts:113`, `sdk/src/eth/abi.ts:335-338` |
+| MEDIUM | Fixed | Audit | `sdk/src/eth/rlp.ts`, `sdk/src/eth/client.ts`, `sdk/src/eth/abi.ts` |
 
 **Severity rationale.** The RLP defect corrupts the signing preimage of any EIP-1559 transaction carrying an access list, and the nonce defect can stall a signer permanently; both are liveness failures with no path to an incorrect transfer.
 
@@ -2270,7 +2275,7 @@ Fixed, verified 2026-09-10 and 2026-09-11. Covered by `abi-pin.test.ts`.
 `encodeRlp` returned the empty-string prefix `0x80` for a zero-length input, and the EIP-1559 encoder passed the empty access list through that path. RLP requires the empty-list prefix `0xc0`. The signing preimage was therefore wrong and the signed transaction was rejected.
 
 ```ts
-// sdk/src/eth/rlp.ts:42
+// sdk/src/eth/rlp.ts
   // Empty string
   if (bytes.length === 0) {
     return new Uint8Array([0x80]);
@@ -2295,7 +2300,7 @@ The RLP encoder emits `0xc0` for an empty access list, with transaction vectors 
 
 #### Status
 
-Fixed, verified 2026-09-10 and 2026-09-11. Covered by `tx-vectors.test.ts:223` and `correctness.test.ts:319`. Four informational rows were closed under the purge of 2026-09-10 rather than fixed: undecoded revert data on the generic contract helpers, multicall split-batch tearing against a stale RPC, a float-based haircut preview that is display-only, and the absent `getCode` check on the canonical multicall address.
+Fixed, verified 2026-09-10 and 2026-09-11. Covered by `tx-vectors.test.ts` and `correctness.test.ts`. Four informational rows were closed under the purge of 2026-09-10 rather than fixed: undecoded revert data on the generic contract helpers, multicall split-batch tearing against a stale RPC, a float-based haircut preview that is display-only, and the absent `getCode` check on the canonical multicall address.
 
 **Rows.** 11 rows.
 
@@ -2303,20 +2308,20 @@ Fixed, verified 2026-09-10 and 2026-09-11. Covered by `tx-vectors.test.ts:223` a
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `front/src/components/features/oracle/FeedsTable.tsx:45-46`, `front/src/components/features/oracle/useOracleData.ts:244-245`, `front/src/components/features/oracle/oracleMarks.ts` |
+| MEDIUM | Fixed | Audit | `FeedsTable.tsx`, `useOracleData.ts`, `oracleMarks.ts` |
 
 **Severity rationale.** The figure was displayed to operators as live extractable value while being a governance parameter product, overstating it by 25 to 50 times; no contract reads it, so the impact is decision quality rather than funds.
 
 #### Description
 
-The feeds table computed a per-feed figure from `maxDeviationBps`, the class-pinned `sigmaPbps` and the feed TTL, and labelled it "OEV". That product is the widest band a push may legally carry, a governance ceiling, not value anyone extracted. It read 75 to 274 bp of TVL per feed against measured live deviations of 0.0 to 5.5 bp, and it is static by construction because sigma is pinned per asset class.
+The feeds table computed a per-feed figure from `maxDevBps`, the class-pinned `sigmaPbps` and the feed TTL, and labelled it "OEV". That product is the widest band a push may legally carry, a governance ceiling, not value anyone extracted. It read 75 to 274 bp of TVL per feed against measured live deviations of 0.0 to 5.5 bp, and it is static by construction because sigma is pinned per asset class.
 
 ```ts
-// front/src/components/features/oracle/FeedsTable.tsx:45
+// FeedsTable.tsx
 /** Widest band the next accepted push can carry, evaluated at the feed's own TTL (the widest
  *  legal source gap) so the OEV figure is a ceiling rather than a snapshot. */
 const oevBandBps = (row: FeedRow): number =>
-  pushBandBps(row.maxDeviationBps, row.sigmaPbps, row.ttl);
+  pushBandBps(row.maxDevBps, row.sigmaPbps, row.ttl);
 ```
 
 A second defect in the same area was a literal NUL byte committed as a memo separator inside a string literal in the feed-gate helper. Git classified the entire 2169-line file as binary, so it produced no diff in review, no three-way merge, and `git show` and `grep` returned nothing for it. The merge had to be resolved by hand and the defect was invisible to every prior review of that file.
@@ -2341,7 +2346,7 @@ Fixed. The oracle page change is on the `audit/oev-live` branch and is not yet m
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/src/oracles/ExternalOracleV5.sol`, `dex-evm/src/libraries/Pricing.sol:52`, `dex-evm/src/oracles/OracleBeacon.sol` |
+| MEDIUM | Fixed | Audit | `ExternalOracleV5.sol`, `PricingLib.sol`, `OracleBeacon.sol` |
 
 **Severity rationale.** Documentation-only divergence, but on the interior swing cap and the beacon upgrade gate it describes safety properties the code does not have, which is what operators act on.
 
@@ -2352,7 +2357,7 @@ Three comment defects shipped alongside the code they described. The interior sw
 The third was live rather than stale: after the preceding quarantine fix, the quarantine bit became write-only. `clearQuarantine` cleared a bit that no longer affected `_allowed`, and no getter exposed it, so the natspec claim that clearing re-arms the lane was false.
 
 ```solidity
-// dex-evm/src/oracles/ExternalOracleV5.sol:586
+// ExternalOracleV5.sol
   /// @dev TIGHTENING: clears ONLY the lane's quarantine bit, re-arming the X cap on a dark lane.
   function clearQuarantine(bytes32 feedId) external {
     requireGuardianOrOwner(AC);
@@ -2385,7 +2390,7 @@ Fixed and closed, verified at the rev2 signoff. One stale natspec residual left 
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/src/oracles/ExternalOracleV5.sol:450`, `dex-evm/src/oracles/ExternalOracleV5.sol:436` |
+| MEDIUM | Fixed | Audit | `ExternalOracleV5.sol`, `ExternalOracleV5.sol` |
 
 **Severity rationale.** Releasing a dark lane is a routine operation and the only mechanism available raised a floor that could never be lowered, leaving that lane permanently accepting pushes up to ten times its configured maximum deviation.
 
@@ -2394,7 +2399,7 @@ Fixed and closed, verified at the rev2 signoff. One stale natspec residual left 
 The only way to release a dark lane was to raise `sigmaFloor`, and `sigmaFloor` had no downward path. The released lane therefore kept a per-push band of ten times `maxDev` for the rest of its life. The self-heal path ignored the sigma carried by the blob it had just refused, so the floor could not converge back on the observed volatility.
 
 ```solidity
-// dex-evm/src/oracles/ExternalOracleV5.sol:344
+// ExternalOracleV5.sol
     uint256 sigmaStored = (rw >> (c.lane * RISK_STRIDE)) & RISK_SIGMA_MASK;
     uint256 sigmaFloor = uint32(c.scfg >> SCFG_SIGMA_FLOOR_SHIFT);
     uint256 sigma = sigmaStored > sigmaFloor ? sigmaStored : sigmaFloor;
@@ -2426,7 +2431,7 @@ Fixed 2026-09-16. The absence of a `ttlSecs` ceiling below the `uint16` maximum 
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| MEDIUM | Fixed | Audit | `dex-evm/src/PoolFactory.sol`, `sdk/src/abis` |
+| MEDIUM | Fixed | Audit | `PoolFactory.sol`, `sdk/src/abis` |
 
 **Severity rationale.** A consumer encoding a removed selector produces a call that reverts rather than one that succeeds incorrectly, but the divergence covered the official-pool grant path, which is a routing credential.
 
@@ -2435,12 +2440,12 @@ Fixed 2026-09-16. The absence of a `ttlSecs` ceiling below the `uint16` maximum 
 The pinned consumer ABIs lagged the contract. `executeOfficial` and `cancelOfficial` existed on `PoolFactory` but were missing from the published ABI, while the removed `setProtocolDeployer` was still exported. Consumers therefore had no way to encode the two live calls and a way to encode one that no longer exists.
 
 ```solidity
-// dex-evm/src/PoolFactory.sol:326
+// PoolFactory.sol
   function executeOfficial(address pool) external override onlyAdmin {
     uint256 eta = pendingOfficial[pool];
     if (eta == 0) revert Err.NoPending();
     if (block.timestamp < eta) revert Err.NotReady();
-    if (block.timestamp > eta + SC.GRACE_PERIOD) revert Err.Expired();
+    if (block.timestamp > eta + SC.GRACE_PERIOD_SECS) revert Err.Expired();
     delete pendingOfficial[pool];
     // The shape is re-asserted HERE, not only at request: the delay is exactly the window in which
     // the pool's sink / seal / listing can move, and branding is a routing credential.
@@ -2468,7 +2473,7 @@ Fixed and closed.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Fixed | Audit | `dex-evm/src/oracles/ExternalOracleV4.sol:292-293`, `dex-evm/src/oracles/ExternalOracleV4.sol:334-341`, `dex-evm/src/oracles/NxrSignerSet.sol:159` |
+| LOW | Fixed | Audit | `ExternalOracleV4.sol`, `ExternalOracleV4.sol`, `NxrSignerSet.sol` |
 
 **Severity rationale.** Every item here is liveness or documentation accuracy at the shipping configuration; the strongest, a public push at a frozen mark, is unprofitable against the live gate.
 
@@ -2504,7 +2509,7 @@ Fixed, verified in the following round. The documentation rows are verified 2026
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Closed | Audit | `dex-evm/src/oracles/ExternalOracleV4.sol:80-95`, `dex-evm/src/interfaces/IExternalOracleV4.sol:78-79`, `dex-evm/src/oracles/ExternalOracle.sol:349` |
+| LOW | Closed | Audit | `ExternalOracleV4.sol`, `IExternalOracleV4.sol`, `ExternalOracle.sol` |
 
 **Severity rationale.** Documentation and code-hygiene defects with no reachable on-chain consequence; the operational rows would have cost time during a rollout, not value.
 
@@ -2532,7 +2537,7 @@ Fixed for the code and content rows. Three informational rows are Closed with no
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Closed | Audit | `dex-evm/script/lib/Create3Base.sol:37-50`, `dex-evm/script/lib/OracleV4Base.sol:27-41`, `dex-evm/script/ArcRiskRestore.s.sol:806-849` |
+| LOW | Closed | Audit | `Create3Base.sol`, `OracleV4Base.sol`, `ArcRiskRestore.s.sol` |
 
 **Severity rationale.** Both defects require a signer to execute a prepared ceremony; neither is reachable by a third party, and the risk-restore case emits a visible warning.
 
@@ -2560,7 +2565,7 @@ Closed on the second revision, signed off 2026-09-14; the preview fix landed 202
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Closed | Audit | `dex-evm/src/libraries/PoolConfig.sol`, `dex-evm/src/Admin.sol:299-303` |
+| LOW | Closed | Audit | `PoolConfigLib.sol`, `Admin.sol` |
 
 **Severity rationale.** Requires the owner role and a leg that has already collapsed and been re-anchored, but the unhalt silently clears a latch that exists to force a fresh attestation.
 
@@ -2588,7 +2593,7 @@ Closed, 2026-09-15.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Fixed | QA | `dex-evm/src/Router.sol:190-195`, `dex-evm/src/Pool.sol:285`, `dex-evm/src/LPToken.sol:154` |
+| LOW | Fixed | QA | `Router.sol`, `Pool.sol`, `LPToken.sol` |
 
 **Severity rationale.** All of these need an owner-listed fee-on-transfer token or produce a revert rather than a loss, and none is live at the shipping configuration.
 
@@ -2620,7 +2625,7 @@ Fixed for the router floor and the quote-view documentation, verified 2026-09-10
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Closed | QA | `dex-evm/src/libraries/PoolConfig.sol:764-772`, `dex-evm/src/hooks/YieldHook.sol:108-117`, `dex-evm/src/libraries/PoolConfig.sol:801` |
+| LOW | Closed | QA | `PoolConfigLib.sol`, `YieldHook.sol`, `PoolConfigLib.sol` |
 
 **Severity rationale.** Liveness only and conditioned on an already-compromised or failing hook with a non-zero invested balance; no extraction path.
 
@@ -2650,7 +2655,7 @@ Closed, with one residual carried into the deployment plan as ceremony step C-9:
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Closed | QA | `shared/evm/src/access/AccessControl.sol:278-280`, `dex-evm/src/Admin.sol:370-408`, `dex-evm/src/oracles/ExternalOracle.sol:334-336` |
+| LOW | Closed | QA | `AccessControl.sol`, `Admin.sol`, `ExternalOracle.sol` |
 
 **Severity rationale.** Documentation drift on a dormant role, not an availability gap: the owner authority is a strict superset of the guardian authority on every named lever, so the freeze is one transaction today.
 
@@ -2678,7 +2683,7 @@ Closed 2026-09-15 into the deployment ceremony steps C-2, C-3 and C-4.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Fixed | Audit | `dex-evm/src/Admin.sol:552`, `dex-evm/src/Admin.sol:330`, `dex-evm/src/oracles/OracleBeacon.sol:88` |
+| LOW | Fixed | Audit | `Admin.sol`, `Admin.sol`, `OracleBeacon.sol` |
 
 **Severity rationale.** Each item is a bounded authority-scope defect on a lever that already requires a privileged role; the worst case is a repeatable denial of a governance operation whose magnitude the owner had already ratified.
 
@@ -2687,7 +2692,7 @@ Closed 2026-09-15 into the deployment ceremony steps C-2, C-3 and C-4.
 `raiseKappa` dropped any live owner `UPDATE_RISK` operation on the same leg, whether or not the queued operation touched the field the steward was raising.
 
 ```solidity
-// dex-evm/src/Admin.sol:558
+// Admin.sol
   function raiseKappa(address pool, address token, uint16 kappaCovBps) external {
     _onlySteward(pool, true);
     bytes32 key = _keyToken(pool, OP_UPDATE_RISK, token);
@@ -2718,7 +2723,7 @@ Fixed 2026-09-16 for the two code rows. Five rows are accepted with no code chan
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Fixed | Audit | `dex-evm/src/hooks/ERC4626YieldHook.sol:43`, `dex-evm/src/hooks/YieldHook.sol:122-134`, `dex-evm/src/hooks/MorphoBlueYieldHook.sol:27` |
+| LOW | Fixed | Audit | `ERC4626YieldHook.sol`, `YieldHook.sol`, `MorphoBlueYieldHook.sol` |
 
 **Severity rationale.** No hook is installed on a live pool and installation is itself privileged, so every item here requires a privileged action or a misbehaving venue before it has any effect.
 
@@ -2727,7 +2732,7 @@ Fixed 2026-09-16 for the two code rows. Five rows are accepted with no code chan
 `_venueWithdraw` returned the requested amount rather than the measured token delta on both the ERC-4626 and the Compound V2 paths, so a venue with a withdrawal fee or a lossy share price caused the ledger to over-credit and `hookRecall` to over-decrement.
 
 ```solidity
-// dex-evm/src/hooks/ERC4626YieldHook.sol:43
+// ERC4626YieldHook.sol
   function _venueWithdraw(uint256 assets) internal override returns (uint256 got) {
     uint256 before = _tokenBalance(address(this));
     vault.withdraw(assets, address(this), address(this));
@@ -2757,7 +2762,7 @@ Fixed, verified 2026-09-10 and 2026-09-11.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Fixed | Audit | `dex-evm/src/Pool.sol:756`, `dex-evm/src/hooks/YieldHook.sol:393`, `dex-evm/src/periphery/WombexClaim.sol:141` |
+| LOW | Fixed | Audit | `Pool.sol`, `YieldHook.sol`, `WombexClaim.sol` |
 
 **Severity rationale.** Each needs a privileged or adversarially timed call, and the periphery case needs a malformed Merkle root at publication time.
 
@@ -2785,7 +2790,7 @@ Fixed 2026-09-16.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Fixed | Audit | `dex-evm/src/PoolFactory.sol:207` |
+| LOW | Fixed | Audit | `PoolFactory.sol` |
 
 **Severity rationale.** Observability only, with no fund path; the consequence is that an off-chain monitor cannot reconstruct when a pool left the pending set.
 
@@ -2813,7 +2818,7 @@ Fixed.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Closed | Audit | `dex-evm/src/libraries/PoolLiquidity.sol:414`, `dex-evm/src/libraries/PoolIOLib.sol:368`, `dex-evm/src/libraries/PoolConfig.sol:808` |
+| LOW | Closed | Audit | `PoolLiquidityLib.sol`, `PoolIOLib.sol`, `PoolConfigLib.sol` |
 
 **Severity rationale.** Each row needs a specific configuration or a migration step to bind, and the measured gap is a fee-scale advantage rather than a drain of principal.
 
@@ -2845,7 +2850,7 @@ Closed 2026-09-16. Four rows fixed, three accepted as design positions with the 
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Fixed | Audit | `sdk/src/amm/index.ts:105`, `sdk/src/amm/aimm.ts:559`, `sdk/src/amm/aimm.ts:260` |
+| LOW | Fixed | Audit | `sdk/src/amm/index.ts`, `sdk/src/amm/aimm.ts`, `sdk/src/amm/aimm.ts` |
 
 **Severity rationale.** The mirror prices no settlement of its own, so divergence from the chain is a wrong displayed quote or a refused route rather than a wrong fill.
 
@@ -2875,7 +2880,7 @@ Fixed on the second remediation revision; the write-only field was removed on 20
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Closed | Audit | `sdk/src/router/index.ts:436`, `sdk/src/eth/tokens.ts:41`, `sdk/src/venues/deployments.generated.ts:12` |
+| LOW | Closed | Audit | `sdk/src/router/index.ts`, `sdk/src/eth/tokens.ts`, `sdk/src/venues/deployments.generated.ts` |
 
 **Severity rationale.** The chained-leg shape requires a recipient different from the sender on a two-hop route, and the registry labels are a naming defect on a chain not yet carrying a venue record.
 
@@ -2905,7 +2910,7 @@ Closed 2026-09-16.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Fixed | Audit | `front/src/lib/density.ts:170`, `front/src/lib/density.ts:120`, `front/src/pages/pools/poolPosition.ts:65-78` |
+| LOW | Fixed | Audit | `density.ts`, `density.ts`, `poolPosition.ts` |
 
 **Severity rationale.** None of these rows is read by sizing or execution; each one can mislead the reader about the state of a pool while the transaction path enforces the true values.
 
@@ -2935,7 +2940,7 @@ Fixed for the chart honesty and gating rows, verified 2026-09-11; the self-pair 
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Fixed | Audit | `front/src/lib/txError.ts:15-53`, `front/src/lib/settings.tsx:47`, `front/src/hooks/usePoolData.ts:611-786` |
+| LOW | Fixed | Audit | `txError.ts`, `settings.tsx`, `usePoolData.ts` |
 
 **Severity rationale.** These are friction, availability and clarity defects on the client; the preflight simulation and the chain's own reverts prevent a bad transaction from landing in every case.
 
@@ -2965,7 +2970,7 @@ Fixed, verified 2026-09-11. The informational rows were closed on 2026-09-10 und
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Fixed | Audit | `front/src/lib/wallet.tsx:406-469`, `front/src/lib/walletConnect.ts:151-178`, `front/src/lib/walletCalls.ts:104-140` |
+| LOW | Fixed | Audit | `wallet.tsx`, `walletConnect.ts`, `walletCalls.ts` |
 
 **Severity rationale.** Every outcome is a failed or aborted transaction with gas burned, never a mis-executed one, because EIP-155 replay protection stops a wrong-chain send from landing.
 
@@ -2997,7 +3002,7 @@ Fixed on 2026-09-11. The prompt-dwell gap is accepted and the display rows were 
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Fixed | Audit | `dex-evm/test/unit/CoverageProofs.t.sol:753-796`, `dex-evm/test/unit/PoolHooks.t.sol:1472-1499`, `dex-evm/test/unit/Base.t.sol:84-86` |
+| LOW | Fixed | Audit | `CoverageProofs.t.sol`, `PoolHooks.t.sol`, `Base.t.sol` |
 
 **Severity rationale.** No production code is affected; the exposure is that the invariants relied on for the coverage findings were passing without exercising the paths they claim to cover.
 
@@ -3027,7 +3032,7 @@ Closed on 2026-09-15.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Fixed | Audit | `sdk/src/eth/chains.ts:116-123`, `sdk/src/eth/transport.ts:136-148`, `sdk/src/eth/abi.ts:169-177` |
+| LOW | Fixed | Audit | `sdk/src/eth/chains.ts`, `sdk/src/eth/transport.ts`, `sdk/src/eth/abi.ts` |
 
 **Severity rationale.** Exploiting the transport requires a malicious endpoint in the configured ring, and transport-layer security rules out a man in the middle on the defaults; the encoder defect fails closed on revert rather than losing value.
 
@@ -3049,7 +3054,7 @@ Commits: [`f7bec7e`](https://github.com/btr-protocol/sdk/commit/f7bec7e5d038a22b
 
 #### Status
 
-Closed on 2026-09-15. Pinned by `abi.test.ts:315-322` and `abi.test.ts:325-329`.
+Closed on 2026-09-15. Pinned by `abi.test.ts` and `abi.test.ts`.
 
 **Rows.** 2 rows.
 
@@ -3057,7 +3062,7 @@ Closed on 2026-09-15. Pinned by `abi.test.ts:315-322` and `abi.test.ts:325-329`.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Fixed | Audit | `shared/evm/src/access/AccessControl.sol:337-344`, `shared/evm/src/access/AccessControl.sol:385`, `shared/evm/src/base/UpgradeGate.sol:106` |
+| LOW | Fixed | Audit | `AccessControl.sol`, `AccessControl.sol`, `UpgradeGate.sol` |
 
 **Severity rationale.** Both defects require an already-compromised owner key or an operator mistake, and both move in the safe direction on their own, but they remove the cancel signal monitoring depends on and one of them made an eviction unreachable.
 
@@ -3066,7 +3071,7 @@ Closed on 2026-09-15. Pinned by `abi.test.ts:315-322` and `abi.test.ts:325-329`.
 `queueRole` overwrote a live pending rotation without the `AlreadyPending` ban and without emitting a cancellation event, unlike its sibling queues. Overwriting restarts the full delay, which is the safe direction, but monitoring loses the signal that a queued rotation was replaced.
 
 ```solidity
-// shared/evm/src/access/AccessControl.sol:337
+// AccessControl.sol
   /// @dev Re-queueing overwrites and restarts the full delay; the queued address is never live, so
   ///      there is no exit-notice clock to silently restart (contrast `Admin.requestOp`, which
   ///      bans a re-queue for exactly that reason).
@@ -3098,7 +3103,7 @@ Fixed, verified 2026-09-11. The veto cap reverses the balance in the other direc
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| LOW | Fixed | QA | `sdk/scripts/fetch-abis.ts:41`, `sdk/src/amm/aimm.ts:191`, `sdk/README.md:46` |
+| LOW | Fixed | QA | `sdk/scripts/fetch-abis.ts`, `sdk/src/amm/aimm.ts`, `sdk/README.md:46` |
 
 **Severity rationale.** A release or rollback performed in the wrong order could have failed every SDK and front build at once; no on-chain behaviour depends on either the mirror constant or the documentation.
 
@@ -3107,7 +3112,7 @@ Fixed, verified 2026-09-11. The veto cap reverses the balance in the other direc
 The build pinned its ABIs but sourced them from the live production API, so build success depended on live production state and on the order in which a release or rollback was performed. The SDK mirror of the interior swing cap was 10_000 while both the contracts and the integer core use 10_862, and the documentation still described an off-chain `@sdk/amm` pricer after the f64 replica had been deleted and swaps moved to the `/v2` quote path.
 
 ```ts
-// sdk/src/amm/aimm.ts:191
+// sdk/src/amm/aimm.ts
 export const INTERIOR_SWING_CAP_PBPS = 10_000;
 export const MAX_DISPERSION_PBPS = 900_000;
 ```
@@ -3132,7 +3137,7 @@ Fixed 2026-09-16 and closed.
 
 | Severity | Status | Class | Component |
 |---|---|---|---|
-| INFO | Fixed | QA | `core/src/keccak.rs:120` |
+| INFO | Fixed | QA | `keccak.rs` |
 
 **Severity rationale.** A panic on a well-formed input of a specific length, in a pure hashing primitive with no on-chain consumer at the audited revision.
 
