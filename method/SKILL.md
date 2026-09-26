@@ -40,8 +40,8 @@ P1 align       → docs ↔ code, claims as INTENT-n → BEHAVIOR-n @ path:line 
 P2 hypothesise → archive/2026-09-16-process/03-hypotheses/HYPOTHESES.md, one falsifiable line each, settle-by named
 P3 round N     → find (lenses) → dedup (key) → refute → VERDICT.md + archive/2026-09-15/LEDGER-FULL.md + archive/2026-09-15/EYES.md (then re-derive root LEDGER.md, run scripts/check-workbook.py)
 P4 fix         → owner ships; every fix diff gets a delta re-review (differential lens)
-P5 converge    → baseline stop = TWO consecutive full rounds upholding zero findings at any
-                 severity. Its qualifiers and the coverage-floor block: `METHODOLOGY.md §10` and `§3`
+P5 converge    → stop = SIX successive cohorts after the last fix, alternating 3 full-scope and
+                 3 fixed-scope, each upholding zero findings at any severity. Its qualifiers and the coverage-floor block: `METHODOLOGY.md §10` and `§3`
 ```
 
 Concept (economic/oracle/governance) rounds and code rounds run as two tracks inside one round;

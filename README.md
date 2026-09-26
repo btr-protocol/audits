@@ -33,21 +33,21 @@ So the process is the part worth publishing, and it is what is here.
 
 ## Stop rule
 
-A campaign stops after two consecutive clean full rounds on the launch surfaces — not when a round
-is quiet, and not when a deadline arrives. A clean round is one that files zero rows at any
-severity with every reviewer's target set enumerated and marked. The distinction matters: this
-campaign has hit a clean streak and then broken it more than once, because a new surface always
-yields a new round of low-severity findings, and any new or materially changed surface resets the
-count for every path it touches. Severity converges long before count does, and only one of those
-is evidence of anything.
+A campaign stops after six successive clean cohorts on the launch code, alternating three that read
+the whole system and three that read a fixed scope, every one run after the last fix. A clean cohort
+files zero verified rows at any severity with every reviewer's target set enumerated and marked. The
+rule was two clean full rounds until the launch campaigns showed full-scope cohorts passing over the
+paths a fix had just touched; the fixed-scope half closes that gap. Any new or materially changed
+surface resets the count for every path it touches. Severity converges long before count does, and
+only one of those is evidence of anything.
 
 One claimed stop has already been withdrawn. The first campaign on the launch code stopped after
 five clean cohorts, then its finders were measured: about eight tool calls each, too few to call a
 cohort clean. The streak was voided, every fix it produced was re-audited, and every finder since
-returns a coverage log over its whole target set.
+returns a coverage log over its whole target set. The fourth campaign on the launch code reached the
+rule on 2026-09-27.
 
-`METHODOLOGY.md` carries the reasoning, including why a surface that did not exist when the campaign
-began resets the count for every path it touches.
+`METHODOLOGY.md` carries the reasoning.
 
 ## Source of truth
 

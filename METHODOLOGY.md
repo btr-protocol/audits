@@ -682,8 +682,10 @@ read, not a round.
 
 ## 10. The stop rule
 
-**Two consecutive clean full rounds on the launch surfaces**, where a clean round files zero rows at
-any severity with every cohort's target set enumerated and marked. That is the rule. It proves that
+**Six successive clean cohorts on the launch code, alternating three full-scope and three fixed-scope**,
+where a clean cohort files zero verified rows at any severity with every finder's target set enumerated
+and marked, and every cohort runs after the last fix. That is the rule (it replaced "two consecutive clean
+full rounds" on 2026-09-27: full-scope cohorts alone kept missing the paths a fix had just touched). It proves that
 the audited baseline is quiet under the lens roster and model cohort declared, at the pinned commit.
 
 Three qualifiers bind it, and the coverage floor of §3 must be satisfied independently.
@@ -919,12 +921,12 @@ any external use, and never take an effort figure from a hand-maintained index.
 | metric | value | source |
 |---|---|---|
 | round directories | 278 | `RUNS.md`, derived from `archive/2026-09-15/rounds` |
-| ledger rows ever filed | **894** | the full ledger plus the open-row ledger (distinct ids) |
+| ledger rows ever filed | **919** | the full ledger plus the open-row ledger (distinct ids, aliases included) |
 | of which filed by the 2026-09-16 review | **99** | the open-row ledger |
-| of which filed by campaigns A, A', B (2026-09-26) | **59** (14 MEDIUM, 40 LOW, 5 INFO; 152 finders) | the open-row ledger, `REPORT.md` |
+| of which filed by campaigns A, A', B, C, D (2026-09-26 → 09-27) | **84** (15 MEDIUM, 56 LOW, 13 INFO; 340 finders) | the open-row ledger, `REPORT.md` |
 | repository heads pinned at freeze | 9 | `00-scope/FREEZE.md` |
 | formal | bounded skew and monotonicity lemmas proven; magnitude lemmas out of reach | `06-formal/`, `properties.md §3` |
-| stop rule | not reached on the launch code: campaign A claimed it after five clean cohorts and is void (finders too shallow); A' and B each still filed a MEDIUM in a late cohort | `REPORT.md` |
+| stop rule | reached by campaign D at dex-evm ae27993: cohorts 26–31 filed zero verified rows, three full-scope and three fixed-scope, all after the last fix. Campaign A's earlier claim is void (finders too shallow) | `REPORT.md` |
 
 ---
 
