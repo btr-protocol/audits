@@ -3180,7 +3180,7 @@ rule: every row survived two independent refuters.
 
 | Campaign | Finders | Rows | Medium | Low | Info | Stop rule |
 |---|---|---|---|---|---|---|
-| A | 30 | 6 | 1 | 4 | 1 | Claimed after five clean cohorts. **Void**: the finders were too shallow (about 8 tool calls each) to call a cohort clean. Its fixes were re-audited in A' |
+| A | 30 | 6 | 1 | 4 | 1 | Claimed after five clean cohorts. **Void**: the finders were too shallow (about eight tool calls each) to call a cohort clean. Its fixes were re-audited in A' |
 | A' | 42 | 36 | 12 | 21 | 3 | Not reached; the last two cohorts each filed a Medium |
 | B | 80 | 17 | 1 | 15 | 1 | Not reached; cohort 18 of 20 filed a Medium |
 
