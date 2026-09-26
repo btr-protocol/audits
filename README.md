@@ -41,6 +41,11 @@ yields a new round of low-severity findings, and any new or materially changed s
 count for every path it touches. Severity converges long before count does, and only one of those
 is evidence of anything.
 
+One claimed stop has already been withdrawn. The first campaign on the launch code stopped after
+five clean cohorts, then its finders were measured: about eight tool calls each, too few to call a
+cohort clean. The streak was voided, every fix it produced was re-audited, and every finder since
+returns a coverage log over its whole target set.
+
 `METHODOLOGY.md` carries the reasoning, including why a surface that did not exist when the campaign
 began resets the count for every path it touches.
 

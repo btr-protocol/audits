@@ -919,11 +919,12 @@ any external use, and never take an effort figure from a hand-maintained index.
 | metric | value | source |
 |---|---|---|
 | round directories | 278 | `RUNS.md`, derived from `archive/2026-09-15/rounds` |
-| ledger rows ever filed | **833** | the full ledger plus the open-row ledger |
+| ledger rows ever filed | **894** | the full ledger plus the open-row ledger (distinct ids) |
 | of which filed by the 2026-09-16 review | **99** | the open-row ledger |
+| of which filed by campaigns A, A', B (2026-09-26) | **59** (14 MEDIUM, 40 LOW, 5 INFO; 152 finders) | the open-row ledger, `REPORT.md` |
 | repository heads pinned at freeze | 9 | `00-scope/FREEZE.md` |
 | formal | bounded skew and monotonicity lemmas proven; magnitude lemmas out of reach | `06-formal/`, `properties.md §3` |
-| stop rule | not yet exercised on the current mains | `README.md`, `REPORT.md` |
+| stop rule | not reached on the launch code: campaign A claimed it after five clean cohorts and is void (finders too shallow); A' and B each still filed a MEDIUM in a late cohort | `REPORT.md` |
 
 ---
 

@@ -5,7 +5,7 @@ audience: both
 type: reference
 status: live
 lang: en
-updated: "2026-09-16"
+updated: "2026-09-26"
 alias: "/docs/reports/internal/2026-09-16"
 publish: true
 ---
@@ -20,11 +20,23 @@ Findings are published under the [disclosure policy](/docs/3-4-overview): a find
 once its fix is deployed to every chain running the affected code. Nothing below has run on
 mainnet.
 
-Code is named as it stands today, not as it stood when a row was filed: the pricing and config
-libraries carry their `*Lib` names throughout, and the per-chain ceremony scripts quoted below
-(`Deploy.s.sol`, `PoolDeploy.s.sol`, the `Arc*` and `OracleV*Deploy` scripts) were consolidated
-after the campaign into `script/Protocol.s.sol`, `script/Pools.s.sol` and `script/Assets.s.sol`.
 Locations are given as file plus symbol. Line numbers are omitted everywhere the file sits in a closed repository, because they move and nobody outside can check them; the open-source SDK keeps its paths and lines, since those are references a reader can follow.
+
+**This report describes the code of 2026-09-16, not the launch code.** Findings keep the names of the
+code they were filed against. Several surfaces were redesigned after the campaign:
+
+| Named below | At the launch code |
+|---|---|
+| `ExternalOracleV5`, `OracleBeacon`, `OracleProxy`, the v6 wire, `revokeSigner`, `updateFeed`, the feed widen | One mark store per chain in the Pool implementation (`MarkStoreP8`, wire 8): per-tier roster commitment (`setAuth`, 7-day timelock), lane `halt` / owner `unhalt`, `reanchor` for a lane dark past its band, an immutable class table retuned only with a new implementation |
+| Beacon-proxy pools, beacon swap | Per-pool `PoolProxy`; the factory's fleet upgrade migrates the mark store, then moves every proxy in one transaction |
+| `collectProtocolFees` | Fees accrue as pending LP shares; the treasury claims them through `Admin.claimTreasury` |
+| `flashPrepare`, hook recall on flash | Flash lends liquid reserves only |
+| `WombexClaim`, `hookDeploy` / `hookRecall`, `YieldHook.harvest`, `TransientCacheLib` | Deleted |
+| `Deploy.s.sol`, `PoolDeploy.s.sol`, the `Arc*` and `OracleV*Deploy` scripts | `script/Protocol.s.sol`, `script/Pools.s.sol`, `script/Assets.s.sol` |
+
+The pricing and config libraries carry their `*Lib` names throughout. A finding against a deleted
+surface is closed with it; the property it protected is re-established on the new surface and was
+audited again (§6).
 
 ## 1. Funnel
 
@@ -3161,7 +3173,26 @@ Fixed 2026-09-16.
 
 **Rows.** 1 row.
 
-## 6. Reporting a finding
+## 6. Launch-code campaigns, 2026-09-26
+
+Three further campaigns ran against the launch code, under the same method and the refute-first
+rule: every row survived two independent refuters.
+
+| Campaign | Finders | Rows | Medium | Low | Info | Stop rule |
+|---|---|---|---|---|---|---|
+| A | 30 | 6 | 1 | 4 | 1 | Claimed after five clean cohorts. **Void**: the finders were too shallow (about 8 tool calls each) to call a cohort clean. Its fixes were re-audited in A' |
+| A' | 42 | 36 | 12 | 21 | 3 | Not reached; the last two cohorts each filed a Medium |
+| B | 80 | 17 | 1 | 15 | 1 | Not reached; cohort 18 of 20 filed a Medium |
+
+No campaign filed a High or Critical. From A' on, each finder returns a coverage log over its whole
+target set and is re-dispatched below full coverage. Of the 59 rows, 48 are fixed, 8 accepted as
+design positions, 1 left to an owner risk-parameter decision, 1 made moot by a later fix and 1 a
+duplicate. The fixes are not deployed on any chain, so under the
+[disclosure policy](/docs/3-4-overview) the rows are held and only these counts are published. They
+will appear here once the launch code is deployed. A delta pass over the last round of fixes, and
+third-party review, are pending.
+
+## 7. Reporting a finding
 
 Findings against deployed contracts go to **security@btr.markets**. Please do not open a public
 issue for anything exploitable. We confirm receipt, say whether the finding is already in the
