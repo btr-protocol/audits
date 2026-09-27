@@ -45,7 +45,8 @@ One claimed stop has already been withdrawn. The first campaign on the launch co
 five clean cohorts, then its finders were measured: about eight tool calls each, too few to call a
 cohort clean. The streak was voided, every fix it produced was re-audited, and every finder since
 returns a coverage log over its whole target set. The fourth campaign on the launch code reached the
-rule on 2026-09-27.
+rule on 2026-09-27, and the delta campaign over the last pre-launch changes reached it again the same
+day after 38 cohorts.
 
 `METHODOLOGY.md` carries the reasoning.
 

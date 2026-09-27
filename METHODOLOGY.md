@@ -921,12 +921,12 @@ any external use, and never take an effort figure from a hand-maintained index.
 | metric | value | source |
 |---|---|---|
 | round directories | 278 | `RUNS.md`, derived from `archive/2026-09-15/rounds` |
-| ledger rows ever filed | **919** | the full ledger plus the open-row ledger (distinct ids, aliases included) |
+| ledger rows ever filed | **946** | the full ledger plus the open-row ledger (distinct ids, aliases included) |
 | of which filed by the 2026-09-16 review | **99** | the open-row ledger |
-| of which filed by campaigns A, A', B, C, D (2026-09-26 → 09-27) | **84** (15 MEDIUM, 56 LOW, 13 INFO; 340 finders) | the open-row ledger, `REPORT.md` |
+| of which filed by campaigns A, A', B, C, D, F (2026-09-26 → 09-27) | **111** (17 MEDIUM, 77 LOW, 17 INFO; 492 finders) | the open-row ledger, `REPORT.md` |
 | repository heads pinned at freeze | 9 | `00-scope/FREEZE.md` |
 | formal | bounded skew and monotonicity lemmas proven; magnitude lemmas out of reach | `06-formal/`, `properties.md §3` |
-| stop rule | reached by campaign D at dex-evm ae27993: cohorts 26–31 filed zero verified rows, three full-scope and three fixed-scope, all after the last fix. Campaign A's earlier claim is void (finders too shallow) | `REPORT.md` |
+| stop rule | reached by campaign D at dex-evm ae27993 (cohorts 26–31) and again by the delta campaign F on the phase-2 fix heads, dex-evm aa1286f (cohorts 33–38): each six successive cohorts with zero verified rows, three whole-system and three fixed-scope, all after the last fix. Campaign A's earlier claim is void (finders too shallow) | `REPORT.md` |
 
 ---
 

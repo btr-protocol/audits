@@ -24,15 +24,15 @@ fix is deployed to every chain running the affected code. Rows filed against the
 
 | Stage | Rows | Note |
 |---|---|---|
-| Filed | 919 | 835 in the 2026-09-02 to 09-17 campaign, 84 in the launch-code campaigns |
+| Filed | 946 | 835 in the 2026-09-02 to 09-17 campaign, 111 in the launch-code campaigns |
 | Not a real finding | 184 | duplicate, subsumed or refuted by two independent reviewers |
-| Real | 735 | |
+| Real | 762 | |
 | Below the reporting bar | 110 | informational, closed with no code change (owner bar, 2026-09-10) |
-| Moot | 96 | against surfaces the launch code deleted: the V4 and V5 oracles and their beacon, the session and signer-set contracts, the Wombex claim periphery, the Arc operator scripts |
-| Real at the launch code | 529 | |
-| Root-cause rows | 438 | after merging rows that share a mechanism and a fix |
+| Moot | 97 | against surfaces the launch code deleted: the V4 and V5 oracles and their beacon, the first single-word mark store, the session and signer-set contracts, the Wombex claim periphery, the Arc operator scripts |
+| Real at the launch code | 555 | |
+| Root-cause rows | 440 | after merging rows that share a mechanism and a fix |
 | Published below | 282 | open-source components (`dex-evm`, `shared`, `sdk`, `front`, `core`), in 25 bundles; 1 more held until applied on a live chain |
-| Launch-code rows held | 67 | open-source scope, merged into the bundles below, published once deployed |
+| Launch-code rows held | 85 | open-source scope, merged into the bundles below, published once deployed |
 
 The rest are located in the back-end services, the keepers, the price-feed producer and the
 operational environment. They are disclosed to auditors under non-disclosure, because their
@@ -40,13 +40,14 @@ write-ups name infrastructure and key custody.
 
 ## 2. Scope
 
-The launch code, heads of 2026-09-27: `dex-evm` ae27993, `shared` 1f2d4fc, `sdk` 0317546, `front`
-d2e8c075, `core` 7076e3e. Every fix cited in the private ledger is an ancestor of its head, asserted
+The launch code, heads of 2026-09-27: `dex-evm` aa1286f, `shared` 1f2d4fc, `sdk` c5d4072, `front`
+fcc27d4d, `core` 5225fad. Every fix cited in the private ledger is an ancestor of its head, asserted
 mechanically by the workbook gate. The shape that ships:
 
 - **Marks.** One mark store per chain in the Pool implementation, pushed by a committed relayer set
   with k-of-n signatures per tier; per-lane band, halt and anchor; owner `reanchor` for a lane dark
-  past its band. The V4 and V5 oracles, their beacon and the per-leg repoint lane are gone.
+  past its band. Four lanes per word per tier; a 9-lane push costs 73,972 gas (full tx). The V4 and V5
+  oracles, their beacon, the first single-word store and the per-leg repoint lane are gone.
 - **Pools.** Factory-minted `PoolProxy`s; one fleet upgrade at the GOVERNANCE tier re-validates the
   implementation, migrates the mark store and moves every proxy in one transaction.
 - **Solvency.** One pool-level coverage rate `C`; with a leg dark, credits refuse and same-asset exits
@@ -55,6 +56,7 @@ mechanically by the workbook gate. The shape that ships:
 - **Flash and coop.** Flash lends liquid reserves only. Cooperative arbitrage fills through `CoopArb`
   at a discount on the minimum fee and σ part of the spread, never on the risk premia.
 - **Governance.** GOVERNANCE 7 d, LISTING 1 d, TUNING 1 h, guardian veto on each; one guardian Safe.
+  Steward fee, vega and coop fences cap raises only; a guardian coop kill voids any queued re-arm.
 
 ## 3. Method
 
@@ -74,14 +76,15 @@ scope, all after the last fix. Full method:
 | C | launch code | 24 | 7 | 0 | 5 | 2 | not reached |
 | Coop | arbitrage stack | — | 16 | 1 | 13 | 2 | closed by the coop fix set, re-read in D |
 | D | launch code | 164 | 18 | 2 | 16 | 10 | **reached** 2026-09-27 |
+| F | launch code after the phase-2 changes | 152 | 27 | 2 | 21 | 4 | **reached** 2026-09-27 |
 
 No campaign on the launch code filed a High or Critical. D counts 10 more verified findings merged
-into existing rows.
+into existing rows; F's 27 rows merged into existing bundles except three new root causes.
 
 ## 4. Findings
 
 Root-cause bundles at the launch code, High to Informational. **Rows** counts the published rows of
-the 2026-09-02 campaign that still describe live code. The 67 held launch-code rows in this scope are
+the 2026-09-02 campaign that still describe live code. The 85 held launch-code rows in this scope are
 merged into these bundles in the private ledger and join the count here once deployed. "Closed" means no code change was warranted (a record correction or a design position
 stated with its control).
 
@@ -118,7 +121,7 @@ Moot, counted not listed: F-06, F-39, F-54, F-56, F-66 and the V4/V5 rows of the
 
 ## 5. Residual risk
 
-Open findings are held at every severity. At the launch code, 9 root-cause rows are open or
+Open findings are held at every severity. At the launch code, 12 root-cause rows are open or
 acknowledged across all components (1 High and 1 Medium in operations, the rest Low or
 Informational); they are published on the same rule once their residual closes.
 
