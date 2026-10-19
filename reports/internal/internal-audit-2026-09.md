@@ -31,8 +31,8 @@ fix is deployed to every chain running the affected code. Rows filed against the
 | Moot | 97 | against surfaces the launch code deleted: the V4 and V5 oracles and their beacon, the first single-word mark store, the session and signer-set contracts, the Wombex claim periphery, the Arc operator scripts |
 | Real at the launch code | 555 | |
 | Root-cause rows | 440 | after merging rows that share a mechanism and a fix |
-| Published below | 282 | open-source components (`dex-evm`, `shared`, `sdk`, `front`, `core`), in 25 bundles; 1 more held until applied on a live chain |
-| Launch-code rows held | 85 | open-source scope, merged into the bundles below, published once deployed |
+| Published below | 282 | in-scope components (`dex-evm`, `shared`, `sdk`, `front`, `core`), in 25 bundles; 1 more held until applied on a live chain |
+| Launch-code rows held | 85 | in-scope, merged into the bundles below, published once deployed |
 
 The rest are located in the back-end services, the keepers, the price-feed producer and the
 operational environment. They are disclosed to auditors under non-disclosure, because their

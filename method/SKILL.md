@@ -16,7 +16,7 @@ resource; grep, forge and cast are cheap.
 
 - **Allocate reviewers by shared mutable state, not by file.** One lens owns one coupled-state
   group (see `references/lenses.md` §1). Never one agent per file, per page, per module.
-- **≤ 8 finders + ≤ 2 refuters per finding per round.** Refuters: 2 for CRITICAL/HIGH, 1 below.
+- **≤ 8 finders + ≤ 2 refuters per finding per round.** Refuters: 2 for CRITICAL/HIGH, 1 below, plus a cross-validator: ≥ 2 independent validations in total (`METHODOLOGY.md` M6).
 - Agents load exactly: PRIMER + their lens section + the one checklist they own. No transcript
   history, no "for context" dumps. Output = structured JSON; the orchestrator writes the ledger.
   Every lens **enumerates its target set before analysing it** and marks each entry done or
@@ -41,7 +41,7 @@ P2 hypothesise → archive/2026-09-16-process/03-hypotheses/HYPOTHESES.md, one f
 P3 round N     → find (lenses) → dedup (key) → refute → VERDICT.md + archive/2026-09-15/LEDGER-FULL.md + archive/2026-09-15/EYES.md (then re-derive root LEDGER.md, run scripts/check-workbook.py)
 P4 fix         → owner ships; every fix diff gets a delta re-review (differential lens)
 P5 converge    → stop = SIX successive cohorts after the last fix, alternating 3 full-scope and
-                 3 fixed-scope, each upholding zero findings at any severity. Its qualifiers and the coverage-floor block: `METHODOLOGY.md §10` and `§3`
+                 3 fixed-scope, each clean in the `METHODOLOGY.md §10` item 0 sense (zero verified rows AND zero open leads, errors or unexecuted proofs, every finder target set enumerated and marked). Its qualifiers and the coverage-floor block: `§10` and `§3`
 ```
 
 Concept (economic/oracle/governance) rounds and code rounds run as two tracks inside one round;
@@ -123,9 +123,10 @@ LN-31 (every fix diff) · **variant** LN-32 (every upheld finding, before its fi
   unreachable preconditions are often reachable together (halt bit stranding an exit × a toll that
   grows with time; a dust push × the one-update-per-block lock). A read, not a round.
 - **Fix batches are new attack surface** (round-2 lesson). LN-31 mandatory on every fix. A `require`
-  added on a producer-controlled field (keeper/NXR wire) must first read the producer's contract and
+  added on a producer-controlled field (off-chain producer) must first read the producer's contract and
   measure the field on chain (`cast logs`): an ordering the producer never promised is a
   self-inflicted liveness bug.
+- **Format and loop.** Findings and reports use `references/finding-template.md` (numbers with provenance, two-sided proof). A campaign runs the loop as understanding, concept rounds, code rounds, end-to-end scenarios, then fixes.
 - **Fix sizing**: an incorrect fix is worse than none; every `fix:` names its shape (add-require /
   reorder / clamp / new state / control-flow / redesign) and what it could break.
 

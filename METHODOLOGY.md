@@ -2,9 +2,11 @@
 
 # The BTR security framework
 
-**Methodology v1.1. 2026-09-17.** The operating manual for the BTR audit campaign, and the backbone
+**Methodology v1.2. 2026-10-19.** The operating manual for the BTR audit campaign, and the backbone
 of the published report. This document is public. The runs it governs are indexed privately in
 `RUNS.md`; the findings themselves are published under the disclosure policy in §15.
+
+*v1.2 (2026-10-19): off-chain price source, signing tier and build path in scope under a private scope; two-reviewer cross-validation, cross-family by default, measured finder floors with a planted canary, stricter stop rule, and a deployed-equals-audited rule.*
 
 The premise, and the reason this is longer than a checklist:
 
@@ -58,10 +60,14 @@ integrator and operator correctness, meaning quotes, routes, published ABIs and 
 | compromised or mistaken privileged seat | every write its role permits, at the worst moment, including through a fence | exceeding its role's on-chain reach |
 | sequencer or builder | reordering, censoring and timestamp latitude inside protocol bounds | rewriting finalised state |
 
-**Explicitly out of the threat model**, and therefore out of the campaign: key custody and the
-physical or organisational security around it, social engineering, live-incident response, and the
-correctness of a third-party chain, sequencer or bridge beyond how the protocol depends on it. These
-are stated as non-goals in §17 obligation 12, not passed over in silence.
+**Explicitly out of the threat model**, and therefore out of the campaign: physical and organisational
+security around key custody, social engineering, live-incident response, and the correctness of a
+third-party chain, sequencer or bridge beyond how the protocol depends on it. These are stated as
+non-goals in §17 obligation 12, not passed over in silence.
+
+**In scope under a private scope:** the off-chain price source, signing tier and build path. Findings there are reviewed privately and published at summary level after
+the fix. The signing quorum protects against single-key loss, not operator compromise; on-chain gates
+bound the damage.
 
 **The load-bearing asymmetry.** Key compromise is 12.1% of incidents but 41.4% of all dollars lost
 (DeFiLlama, `method/landscape.md`, Registry, *Empirical datasets*). The prerequisite cap in
@@ -86,7 +92,7 @@ three mechanisms remain.
 
 | # | mechanism | what it is, and where it lives here |
 |---|---|---|
-| **M1** | **complexity-weighted re-reads**: the second, third and fourth opinion | Not "did a tool scan this line" but *how many independent readers formed an opinion about it*, weighted by what the line can cost. Every public pack runs N agents **once** across the whole scope: breadth, then done. None encode a re-read budget per line. This one does (§3), and reported coverage is the **minimum** over paths, naming the path that sets it. |
+| **M1** | **complexity-weighted re-reads**: the second, third and fourth opinion | Not "did a tool scan this line" but *how many independent readers formed an opinion about it*, weighted by what the line can cost. Every public pack runs N agents **once** across the whole scope: breadth, then done. None encode a re-read budget per line. This one does (§3), and reported coverage is the **minimum** over paths, published as a rate; the private record names the path. |
 | **M2** | **model diversity** | The free packs are single-family by construction: a prompt bundle inherits whatever the host model cannot see. This framework rotates families and treats a between-family disagreement as the most informative event the campaign produces (§5). |
 | **M3** | **mandatory adversarial debate** | Public packs converge: agents find, an orchestrator dedups, a judge scores. Nobody in that pipeline is paid to *destroy* a finding, so its failure mode is a confident false positive and, worse, a confident false negative nobody challenges. Every finding here meets refuters that default to `refuted` (§6.7). Debate is also the only device that keeps re-reads honest: without it, opinions 2, 3 and 4 ratify opinion 1. |
 
@@ -210,7 +216,7 @@ variant lenses are triggered by a fix or an upheld finding, not by score.
 
 | rule | statement |
 |---|---|
-| **C1** | Campaign coverage is `min over entry points of (eyes spent / eyes required)`. Report that minimum and *name the entry point that sets it*. A campaign never reports a mean. |
+| **C1** | Campaign coverage is `min over entry points of (eyes spent / eyes required)`. Publish it as rates only, never the entry point that sets it while that deficit is open; the private record names it. A campaign never reports a mean. |
 | **C2** | A hot path (score 4 or 5) below its eye budget blocks the stop rule outright, regardless of how many consecutive clean rounds have run. Findings-convergence on the covered part of a system says nothing about the uncovered part. |
 | **C3** | The budget is per **(entry point x lens)** cell, and cells are tracked per **model family** for score-5 paths. A score-5 path signed off by one model family alone is recorded as `single-family` in the residual-risk statement (§13), not as covered. |
 | **C4** | Enumerate before analysing. An unmarked entry in a cohort's target set is an unfinished pass, never a clean one, and a clean round requires every cohort's set fully marked. |
@@ -221,12 +227,22 @@ variant lenses are triggered by a fix or an upheld finding, not by score.
 pass that cites nothing did not happen. The mechanical assertion is:
 
 > every entry point in `00-scope/ENTRYPOINTS.md` has at least its required eyes in `EYES.md`, or is
-> listed by name in the residual-risk statement with the deficit.
+> recorded privately with its deficit, and published as a rate (§13). A hot-path deficit blocks the stop rule (§10.1).
 
 Coverage evidence is positive and negative. Per entry point the record carries which lenses logged
 lines, which returned `N/A` with a reason, and which were **never reached**. Controls that passed are
 recorded beside controls that failed; a report showing only failures is a report that cannot be
 audited for omission.
+
+### 3.5 Measured finder floors
+
+Floors are measured from the harness logs, never self-reported. Code finder: at least 40 tool calls
+(60 when its set holds a score-5 entry point or a hot path), 100% of its target set marked, one range
+logged per entry. Concept finder: at least 40 calls. End-to-end finder: at least 60 calls, every hop
+of its scenarios crossed. Challenger: at least 20 calls. Cross-validator: at least 15. Each cohort's
+target carries one planted canary as a recall check. A finder below its floor, or a cohort that misses
+its canary, voids that cohort's clean; the cohort is re-run in a fresh session and its candidates still
+go to challenge.
 
 ---
 
@@ -291,7 +307,7 @@ obligations 6 and 10). A finding stands on its citation.
 | rule | statement |
 |---|---|
 | **M2** | Round composition draws cohorts from at least two families whenever more than one is available, and the two must not both be scoped-primed. Pair a scoped cohort in family X with a free-blind cohort in family Y, so A2, A3 and A4 vary together. |
-| **M3** | A finding confirmed by two families is `cross-family confirmed` and skips one refuter tier. A finding found by one family and *refuted* by another is escalated to debate (§6.8), never dropped. |
+| **M3** | A finding confirmed by two families is `cross-family confirmed` and skips one refuter tier, never dropping below the two independent validations M6 requires. A finding found by one family and *refuted* by another is escalated to debate (§6.8), never dropped. |
 | **M4** | Cross-family agreement is **evidence, never a second row**. A cohort that counts agreement as corroborating rows inflates its own output, and that is the first thing a hostile reader checks. |
 
 **M5, what the literature permits us to claim.** Same-model resampling raises accuracy but is not
@@ -299,6 +315,8 @@ diversity. Model judges agree with human preference above 80%, yet their self-co
 Krippendorff's alpha runs as low as 0.27 and their framing bias reaches +31.6 points (Appendix A.1).
 **A judge that disagrees with itself cannot arbitrate.** That is the empirical reason a human holds
 the final call, and the reason arbitration is a named role rather than another model.
+
+**M6, validation floor.** Every finding is challenged refute-first and cross-validated by at least two independent reviewers (refuter plus cross-validator or challenger); a finding touching two sub-scopes is validated by the other cohort. The challenger is from a different model family than the finder, unless none is free, which is recorded. The served model is recorded per pass; a silent fallback voids the pass, which is re-run. No tier budget or M3 skip goes below this floor.
 
 ---
 
@@ -315,6 +333,10 @@ mechanically, that **every `repo@sha` cited anywhere in the front door is an anc
 head**. A citation that does not descend from the freeze is a citation to code that was never audited.
 This is the load-bearing control of the whole framework: it is what makes "we audited this commit"
 checkable rather than claimed, and it is re-run at every release (§11).
+
+**Deployed equals audited.** On-chain bytecode is matched to a reproducible build at the pinned sha; an
+off-chain workload image digest is mapped to its source sha. A mismatch is audited at the real sha or
+filed.
 
 Scope is published in both directions: the in-scope file set, the out-of-scope paths, and third-party
 boilerplate marked by origin (Solady, OpenZeppelin, ours). An audit that publishes only what it
@@ -373,7 +395,7 @@ that names its lenses without stating their questions has told the reader nothin
 | id | lens | its standing questions |
 |---|---|---|
 | LN-10 | **economist** | Who bears a spoke's LVR, the hub or the spoke LPs? Is surplus above peg claimable? Can undercoverage persist without an exit? Is the coverage-parameter ladder worth at least one day of LVR at each archetype's volatility? How long is recovery after a gap? Are the shipped fee, vega, dispersion, band, TTL, max-deviation and sigma-floor values mainnet-safe, and why? Answers carry numbers from the live law and live state, never prose. |
-| LN-11 | **oracle-skeptic** | Per stated assumption: the cheapest violation, the blast radius in legs, what detects it, what stops it. Standing items: wedging past the deviation band, slot-clock masking, shared signer sets, sigma floors, inert confidence, keeper choice and delay as order-flow value, front-running a push at the frozen mark, one-update-per-block lock-in with an older valid blob, sequencer and timestamp semantics, and whether the relay key is the owner key. |
+| LN-11 | **oracle-skeptic** | Per stated assumption: the cheapest violation, the blast radius in legs, what detects it, what stops it. Standing items: wedging past the deviation band, slot-clock masking, shared signer sets, sigma floors, inert confidence, keeper choice and delay as order-flow value, front-running a push at the frozen mark, one-update-per-block lock-in with an older valid blob, and sequencer and timestamp semantics. |
 | LN-12 | **governor** | Roles, timelock keys and tiers, steward fences and step clamps and cooldowns (walk the worst case for 24 hours), guardian direction and reach, proxy provenance against the deployments record, expired-operation semantics, and the routine matrix: overlap, gaps, dead routines, incentive per routine, idempotent on and off, every halt has a reverse, multi-step admin atomicity, and a healthcheck that diffs intended against chain. |
 | LN-13 | **first-principles** (once per campaign) | Ignore the rationale in the docs. Re-derive from the ledger code alone what each LP cohort is promised, judge the design for mixed-toxicity baskets, and propose the minimal redesign ranked by attack surface. **Second duty, invariant inference**: derive invariants *from* the code, in the opposite direction to every other lens, then diff against the documented set. Inferred but undocumented is either an unpublished axiom or an accident nobody defends; documented but not inferable is unenforced. Seed candidates from this system's own ledger, never from AMM priors: an engine carrying `k = x*y` manufactures violations out of an AIMM by design. |
 
@@ -421,14 +443,16 @@ files compiled, contracts analysed, calls executed, mutants generated. A run bel
 Every High and Medium hit gets a one-line refutation naming the compensating control, or becomes a
 finding. Neither outcome is silence.
 
-### 6.7 Refute first, by two independent reviewers
+### 6.7 Refute first, by independent reviewers
 
-Every candidate goes to **two independent refuters**, instructed to refute, defaulting to `refuted`.
+Every candidate goes to refuters instructed to refute, defaulting to `refuted`: **two at CRITICAL and HIGH, one below**.
+The refuter is from a different model family than the finder (M6), and a cross-validator or challenger
+brings the candidate to at least two independent validations in total (M6), whatever the tier.
 The disagreeing party carries the burden with evidence. A `FALSE` verdict must name the compensating
 control: "no evidence" is not a refutation. Verdicts are `TRUE`, `FALSE`, `DOWNGRADE`, `UPGRADE`.
 
-Budget: two refuters for CRITICAL and HIGH candidates, one below. A candidate that survives no refuter
-is never filed. **A split between the two goes to a third reviewer** who has seen neither refutation
+A candidate that survives no refuter
+is never filed. **A split between two reviewers goes to a third reviewer** who has seen neither refutation
 and receives the candidate and the code, not the two arguments.
 
 Two refutation lenses run separately on every candidate:
@@ -462,8 +486,10 @@ specification), "the static tools are clean" (economic and logic bugs pass every
 every solver), "the sibling checked out" (each leg, lane, field, direction and actor stands on its own
 citation; a refutation of row N is never evidence for row M).
 
-**Verification record**, per finding: method (trace, proof of concept, or measurement), guards
-checked, proof-of-concept path with pass or fail and the key number, verdict. Runner semantics: an
+**Verification record**, per finding, in the format of `method/finding-template.md` (required): method
+(trace, proof of concept, or measurement), guards checked, numbers with their provenance, two-sided
+proof (the exploit succeeds at the pin and reverts on the fix), proof-of-concept path with pass or fail
+and the key number, verdict. Runner semantics: an
 exit code maps to VERIFIED or DISPROVED; a timeout is ERROR, never DISPROVED; **could not build the
 harness is not the same as the proof failed, which is not the same as the finding is refuted.**
 
@@ -688,17 +714,22 @@ and marked, and every cohort runs after the last fix. That is the rule (it repla
 full rounds" on 2026-09-27: full-scope cohorts alone kept missing the paths a fix had just touched). It proves that
 the audited baseline is quiet under the lens roster and model cohort declared, at the pinned commit.
 
+Item 0: **clean means zero unresolved leads, errors or unexecuted proofs**, not only zero verified rows.
+
 Three qualifiers bind it, and the coverage floor of §3 must be satisfied independently.
 
 ### 10.1 Coverage qualifier
 
-A hot path below its eye budget blocks the rule outright (Rule C2). Findings-convergence is not a
-substitute for having looked.
+A hot path below its eye budget blocks the rule outright (Rule C2), and the residual-risk statement
+cannot absorb a hot-path deficit. Findings-convergence is not a substitute for having looked. End to
+end: every chain-of-trust hop and every end-to-end scenario is attacked by at least two cohorts at
+floor.
 
 ### 10.2 Surface reset
 
 **Any new or materially changed surface resets the count for every path it touches**, and enters the
-coverage floor with zero eyes.
+coverage floor with zero eyes. Config and parameter transactions, image redeploys and new files are
+changes.
 
 The justification is from this campaign. The only new CRITICAL, a pool-provenance ambiguity in factory
 initialisation where a sentinel value combined with an attacker-supplied treasury, was found by the
@@ -792,7 +823,7 @@ carries its own expiry.
 
 The framework never emits "secure". It emits, and the published report must carry:
 
-1. **Coverage floor**: the minimum, and the entry point that sets it.
+1. **Coverage floor**: the minimum, as a rate. Named deficits stay private until fixed.
 2. **Single-family paths**: every score-5 path signed off by one model family only.
 3. **Assumptions nothing enforces**: this campaign lists 14 in `02-spec/ALIGN-*.md`, of which three
    are violated on the live testnet today. An assumption register with live violations is more useful
@@ -816,13 +847,13 @@ nothing.
 | limit | the honest statement |
 |---|---|
 | **absence of bugs** | Not proven, and not provable by this or any method. The stop rule is budget exhaustion with a falsifiability condition (§10.4). |
-| **the untouched tree** | A delta-only round re-reads findings sites, unlogged files and fix diffs. It says nothing about a file it did not open. Only the coverage floor speaks to that, and it speaks as a minimum with a named deficit. |
+| **the untouched tree** | A delta-only round re-reads findings sites, unlogged files and fix diffs. It says nothing about a file it did not open. Only the coverage floor speaks to that, and it speaks as a minimum rate; the private record names the deficit. |
 | **novel-mechanism economics** | The structural blind spot. Every model in a cohort trained on overlapping corpora shares priors, so the worst case is a mechanism with no analogue in the training data. That is precisely the coverage toll and the impact curve: the parts of this protocol that are genuinely new. Compensating controls are derivation review, simulation and a human economist. Not more agents. |
 | **the design itself** | The campaign validates the implementation against the stated design and the derivations. It does not certify that the economic design is a good idea. |
 | **reproducibility** | The pinned commits, provenance fields and target-set hashes make a round re-executable. Sampling non-determinism and silent provider-side model updates mean it is not re-*producible* byte for byte, and any claim otherwise would be false. |
 | **static-tool coverage** | Every tool row carries a coverage tripwire because a tool can exit clean over zero analysis. The tripwires bound what was analysed; they do not bound what the tools are capable of missing, and economic and logic defects pass every one of them. |
 | **formal reach** | Bounded pure lemmas are proven. Magnitude lemmas over transcendental math are out of reach, not on a to-do list, and are routed to fuzzing and to the cross-language differential gate instead. |
-| **the off-chain and operational surface** | Key custody, physical and organisational security, incident response, and third-party chain behaviour are outside the threat model (§0.2) and were not examined. |
+| **the off-chain and operational surface** | The off-chain price source, signing tier and build path are reviewed under a private scope (§0.2). Physical and organisational security, incident response, and third-party chain behaviour are outside the threat model and were not examined. |
 | **the human arbiter** | One named person holds the final call. That is a single point of judgement, and it is disclosed as one. The mitigation is the published overturn standard and the dissent register, not a claim of infallibility. |
 
 **The standard a hostile reader will quote.** SCSVS `0x04`: *"Automated tools alone are insufficient
@@ -890,12 +921,12 @@ agentic campaign. Each row states the position today and the control that closes
 | 4 | **Who arbitrates, under what standard** | A named lead engineer holds the final call, distinct from every finding and refuting reviewer, overturn standard "clearly wrong". Two refuters, tie-broken by a third (§6.7, §6.8). | Publish the time-boxed escalation window and its cost, so refuted items do not re-litigate every round, and record arbitration decisions with their basis. |
 | 5 | **Dedup stated as a test** | The location-shaped key and the six merge situations (§6.9). Cross-family agreement is evidence, never a second row. | Publish the cause-shaped test's outcome alongside the key's on every merged pair, so the two can be compared by a reader. |
 | 6 | **False-positive rate, measured** | The inputs exist: candidates raised, candidates surviving refutation, rows surviving arbitration, rows reaching a reproduced proof of concept, all recorded per pass under Rule M1. | Compute and publish the ratio, per model family. A framework that will not publish its precision is asking for faith. |
-| 7 | **Coverage evidence, positive and negative** | Every pass records the `path:line` it cited; the floor is reported as a minimum naming its entry point (§3.4). | Complete the negative record for every entry point: which lenses returned `N/A` with a reason, and which were never reached. |
+| 7 | **Coverage evidence, positive and negative** | Every pass records the `path:line` it cited; the floor is reported as a minimum rate; the private record names its entry point (§3.4). | Complete the negative record for every entry point: which lenses returned `N/A` with a reason, and which were never reached. |
 | 8 | **What the stop rule proves, and does not** | §10.4 and §14, in the words they must be published in. | Nothing outstanding. |
 | 9 | **Reproducibility** | Model family and version, date, lens, scope regime, priming and target-set hash recorded per pass (Rule M1). | Publish skill-file hashes, effort settings, agent counts, wall clock, token spend, the ledger, the coverage log and the *failed* search patterns; and state plainly what is not reproducible (§14). |
 | 10 | **Who reviewed the reviewers** | Two-refuter review with a third-reviewer tie-break, a dissent register, and a human arbiter above both. | Publish which rows a human checked, on what sampling basis and with what qualification; whether any party outside the cohort re-ran a round; and **the disagreement rate between model families on the same finding**, as a number. That metric is computable today and it is the one that carries the cohort argument. |
 | 11 | **Effort in a comparable unit** | Agent-passes by model by wall clock, and compute spend, so a reader can price the claim against a firm's engineer-weeks. | Publish the conversion explicitly rather than leaving the reader to make it. |
-| 12 | **Non-goals, stated** | §0.2 and §14: no live-incident response, no key-custody review, no operational security review, and no validation of the economic model's *design* beyond what the stated derivations permit. | Map to the Rekt Test and publish which of the twelve are passed and which are not. The contrast is more credible than a clean sheet. |
+| 12 | **Non-goals, stated** | §0.2 and §14: no live-incident response, no physical or organisational security review, and no off-chain finding detail beyond summary level after the fix, and no validation of the economic model's *design* beyond what the stated derivations permit. | Map to the Rekt Test and publish which of the twelve are passed and which are not. The contrast is more credible than a clean sheet. |
 | 13 | **The named blind spot** | Novel-mechanism economics with no analogue in the training data, stated as a limitation and not as a solved item (§14). | Compensating controls are derivation review, simulation and a human economist. Publishing the blind spot is what separates a framework from marketing. |
 
 ### 17.1 Corrections to the received wisdom
@@ -940,6 +971,7 @@ any external use, and never take an effort figure from a hand-maintained index.
 | `method/lenses.md` | lens standing orders, coupled-state map, verification protocol. |
 | `method/aimm-checklist.md` | protocol-native checklist items, six sections. |
 | `method/properties.md` | property templates, tool pipeline with coverage tripwires, formal bridge. |
+| `method/finding-template.md` | the required finding and report format (published as `method/finding-template.md`): numbers provenance, two-sided proof. |
 | `method/landscape.md` | input registry with provenance, duplication measurement, rejected and unreachable lists. Never loaded by a cohort. |
 | `RUNS.md` | private round index. Derived from the archive. |
 | `public/DISCLOSURE.md` | the disclosure policy in full. |

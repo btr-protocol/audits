@@ -633,14 +633,6 @@ our loop beats one strong model asked directly, and nobody has measured it on ou
 mechanical next step is one lens against ScaBench's curated set (31 projects, 555 vulns, GPT-5
 single-file baseline included) or against `evmbench`, compared to the published baseline.
 
-**Surfaces no slice owned.** These are the scope gaps the empirical layer says matter most, and the
-sweep found sources for them without reviewing the surfaces themselves: `keepers/` (Rust), the NXR
-wire producer, `back/` gateway and quote, the deploy and governance scripts, the SDK and front quote
-path, `front/` as a Preact SPA on a public origin, `content/` (a push to `main` is live in under 5 s
-with no build and no review gate), the registry, keeper hosts, RPC endpoints and the sequencer.
-GOV-08 already records that a deploy script shipped kappa = 0 on 28 of 37 legs, and that class of bug
-lives outside `dex/evm/src`, which is where every round has looked.
-
 **Sub-sweeps deliberately deferred.** A larger Code4rena sweep and a Sherlock cross-check (their
 `-judging` repos label duplicate groups on issues) would strengthen the solo-find backbone; both are
 mechanical and were not done. The Bancor withdrawal formulas were not recovered from any source. The

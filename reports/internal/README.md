@@ -7,7 +7,7 @@ until their residual closes.
 
 | Report | Period | Scope |
 |---|---|---|
-| [internal-audit-2026-09.md](internal-audit-2026-09.md) | 2026-09-02 to 2026-09-27 | open-source components (`dex-evm`, `shared`, `sdk`, `front`, `core`) at the launch code; launch-campaign rows counted per bundle and held until deployed |
+| [internal-audit-2026-09.md](internal-audit-2026-09.md) | 2026-09-02 to 2026-09-27 | in-scope components (`dex-evm`, `shared`, `sdk`, `front`, `core`) at the launch code; launch-campaign rows counted per bundle and held until deployed |
 
 Previously published as `2026-09-16.md` ("Security review, September 2026"); that address
 redirects to the report above.

@@ -12,11 +12,18 @@ The short version: the method is public, open findings are not.
   refute-first protocol, what counts as evidence, and the stop rule that decides when a campaign is
   finished rather than merely quiet.
 - [`method/SKILL.md`](method/SKILL.md) — the orchestration a round follows.
+- [`method/finding-template.md`](method/finding-template.md) — the required finding and report format: numbers with their provenance, and a proof that fails on the fix.
 - [`method/landscape.md`](method/landscape.md) — every source the toolkit was built from: 196
   registered, 91 repositories cloned and read at a pinned commit. It records what was rejected and
   why, not only what was taken.
 - `reports/third-party/` — vendor reports, published under the disclosure rule.
 - `reports/internal/` — internal findings, published under the same rule.
+
+## Scope boundary
+
+The on-chain contracts and their on-chain observable behaviour are published. The off-chain price source,
+its signing tier and the surrounding infrastructure are reviewed privately; their findings are
+disclosed at summary level after the fix.
 
 ## The finding that motivated publishing this
 
